@@ -65,17 +65,18 @@ class SyncAIOrchestrator:
         return "conversation"
     
     def generate_free_response(self, message: str, intent: str, has_story: bool) -> str:
-        """Generate response for free tier users"""
+        """Generate response for free tier users with generation limits"""
         
         if intent == "romantic":
             response = "💕 I can sense the romantic feelings in your message! "
             if has_story:
                 response += "It connects beautifully with the story you shared. "
-            response += "\n\n🔒 **Unlock deeper romantic conversations with Basic plan!** Visit our website to upgrade and explore unlimited romantic scenarios! 💎"
+            response += "\n\n🎨 **Free users get 3 image generations & 3 video generations daily!**"
+            response += "\n🔒 **Unlock unlimited romantic content with Basic plan (₹299/month)!** Visit our website to upgrade! 💎"
             
         elif intent == "nsfw":
             response = "🔥 I understand you're looking for more intimate conversations...\n\n"
-            response += "🔒 **NSFW content is available in Prime plan and above!**\n"
+            response += "🔒 **NSFW content is available in Prime plan and above (₹899/month)!**\n"
             response += "💎 Upgrade on our website to unlock:\n"
             response += "• Intimate conversations\n• NSFW image generation\n• Adult roleplay scenarios\n• Private sessions"
             
@@ -83,21 +84,24 @@ class SyncAIOrchestrator:
             response = "💙 I'm here for you. I can see you're going through something difficult. "
             if has_story:
                 response += "Your story shows you've faced challenges before - you're stronger than you know. "
-            response += "\n\n💎 **Premium users get proactive emotional support and deeper empathy!** Upgrade for 24/7 emotional companion features."
+            response += "\n\n🎨 **Try generating a comforting image to help with your emotions (3 free daily)!**"
+            response += "\n💎 **Prime users get proactive emotional support and deeper empathy!** Upgrade for 24/7 emotional companion features."
             
         elif intent == "roleplay":
             response = "🎭 I'd love to roleplay with you! "
             if has_story:
                 response += "Based on your story, I can create amazing scenarios. "
-            response += "\n\n🔒 **Advanced roleplay with images, voice, and NSFW scenarios available on our website!** Visit to unlock premium roleplay experiences."
+            response += "\n\n🎬 **Create roleplay videos with your 3 free daily generations!**"
+            response += "\n🔒 **Advanced roleplay with unlimited images, voice, and NSFW scenarios available on our website!** Visit to unlock premium roleplay experiences."
             
         else:
-            # General conversation
+            # General conversation with generation offers
             response = "I hear you! "
             if has_story:
                 response += "It's interesting how this connects to your story. "
             response += "I'm learning more about you with every message! 💕\n\n"
-            response += "💡 **Tip:** Visit our website for deeper conversations, image generation, and premium features!"
+            response += "🎨 **Free Daily Limits:** 3 images + 3 videos\n"
+            response += "💡 **Tip:** Visit our website for image generation, video creation, and premium features!"
         
         return response
     
