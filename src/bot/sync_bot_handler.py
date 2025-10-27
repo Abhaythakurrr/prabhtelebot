@@ -409,6 +409,18 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
                 logger.info("🚪 Handling exit_roleplay callback")
                 self.exit_roleplay(call)
             
+            elif data == "finish_story":
+                logger.info("✅ Handling finish_story callback")
+                self.finish_story(call)
+            
+            elif data == "continue_story":
+                logger.info("➕ Handling continue_story callback")
+                self.continue_story(call)
+            
+            elif data.startswith("roleplay_"):
+                logger.info(f"🎭 Handling roleplay scenario: {data}")
+                self.start_roleplay_scenario(call, data)
+            
             else:
                 logger.warning(f"⚠️ Unknown callback data: {data}")
                 self.bot.answer_callback_query(call.id, "Unknown action")
@@ -953,5 +965,73 @@ Need help? Just ask me anything! 💕
             "You can start roleplay again anytime with /roleplay! 💕",
             call.message.chat.id,
             call.message.message_id,
+            parse_mode='Markdown'
+        )
+
+    
+    def finish_story(self, call):
+        """Finish story collection"""
+        user_id = str(call.from_user.id)
+        
+        if user_id in self.user_sessions and "story_data" in self.user_sessions[user_id]:
+            story_text = self.user_sessions[user_id]["story_data"].get("story_text", "")
+            
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            markup.add(
+                types.InlineKeyboardButton("🎭 Start Roleplay", callback_data="start_roleplay"),
+                types.InlineKeyboardButton("🎨 Generate Content", callback_data="gen_image")
+            )
+            
+            self.bot.edit_message_text(
+                f"✅ **Story Saved!**\n\n"
+                f"📊 **Summary:**\n"
+                f"• Length: {len(story_text)} characters\n"
+                f"• Status: Processed and stored\n\n"
+                f"🧠 I now understand your story and can create personalized experiences!\n\n"
+                f"What would you like to do next?",
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+        else:
+            self.bot.answer_callback_query(call.id, "No story found. Please share your story first!")
+    
+    def continue_story(self, call):
+        """Continue adding to story"""
+        self.bot.edit_message_text(
+            "📝 **Continue Your Story**\n\n"
+            "Keep typing! I'm listening to every word.\n\n"
+            "Send me more details about your story, and I'll remember everything! 💕",
+            call.message.chat.id,
+            call.message.message_id,
+            parse_mode='Markdown'
+        )
+        self.bot.answer_callback_query(call.id, "Continue typing your story!")
+    
+    def start_roleplay_scenario(self, call, scenario_data):
+        """Start a specific roleplay scenario"""
+        user_id = str(call.from_user.id)
+        scenario_index = int(scenario_data.split("_")[1])
+        
+        # Set roleplay mode
+        if user_id not in self.user_sessions:
+            self.user_sessions[user_id] = {}
+        self.user_sessions[user_id]["stage"] = "roleplay_active"
+        self.user_sessions[user_id]["scenario_index"] = scenario_index
+        
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton("🚪 Exit Roleplay", callback_data="exit_roleplay")
+        )
+        
+        self.bot.edit_message_text(
+            f"🎭 **Roleplay Started!**\n\n"
+            f"I'm now in character for this scenario.\n\n"
+            f"Send me any message and I'll respond in roleplay mode!\n\n"
+            f"*Let the adventure begin...* ✨",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
             parse_mode='Markdown'
         )
