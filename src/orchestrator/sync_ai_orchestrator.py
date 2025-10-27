@@ -44,6 +44,141 @@ class SyncAIOrchestrator:
             logger.error(f"Error generating contextual response: {e}")
             return "I'm here for you! Tell me more about what's on your mind. 💕"
     
+    def generate_contextual_response_with_history(self, message: str, story_context: Dict[str, Any], 
+                                                   conversation_history: List[Dict[str, str]], user_tier: str) -> str:
+        """Generate AI response with conversation history for context"""
+        try:
+            # Analyze message intent
+            intent = self.analyze_message_intent(message)
+            
+            # Get story elements
+            has_story = bool(story_context.get("story_text"))
+            story_summary = story_context.get("story_text", "")[:500] if has_story else ""
+            
+            # Build AI prompt with conversation history
+            system_prompt = self.build_system_prompt(user_tier, has_story)
+            user_prompt = self.build_user_prompt_with_history(message, intent, story_summary, conversation_history, user_tier)
+            
+            # Call REAL AI model with history
+            ai_response = self.call_openrouter_api_with_history(system_prompt, user_prompt, conversation_history, user_tier)
+            
+            if ai_response:
+                # Post-process response
+                final_response = self.post_process_response(ai_response, user_tier, intent)
+                return final_response
+            else:
+                # Fallback to tier-based response if API fails
+                return self.generate_fallback_response(message, intent, has_story, user_tier)
+                
+        except Exception as e:
+            logger.error(f"Error generating contextual response with history: {e}")
+            return "I'm here for you! Tell me more about what's on your mind. 💕"
+    
+    def build_user_prompt_with_history(self, message: str, intent: str, story_summary: str, 
+                                       conversation_history: List[Dict[str, str]], user_tier: str) -> str:
+        """Build user prompt with conversation history"""
+        prompt = ""
+        
+        # Add story context if available
+        if story_summary:
+            prompt += f"Story context: {story_summary}\n\n"
+        
+        # Add recent conversation history (last 5 exchanges)
+        if conversation_history:
+            prompt += "Recent conversation:\n"
+            for exchange in conversation_history[-5:]:
+                prompt += f"User: {exchange['user']}\n"
+                prompt += f"You: {exchange['assistant']}\n"
+            prompt += "\n"
+        
+        # Add current message
+        prompt += f"User's current message: {message}\n\n"
+        
+        # Add intent instruction
+        intent_instructions = {
+            "romantic": "Respond with deep romantic emotion, referencing our conversation history.",
+            "nsfw": "Respond with appropriate intimacy for their tier level, building on our connection.",
+            "emotional_support": "Provide deep emotional support, remembering what they've shared.",
+            "roleplay": "Engage in immersive roleplay, continuing from our previous interactions.",
+            "question": "Answer thoughtfully while maintaining romantic personality and conversation flow.",
+            "conversation": "Continue naturally with emotional depth, building on our conversation."
+        }
+        
+        prompt += f"Intent: {intent_instructions.get(intent, 'Respond naturally')}\n\n"
+        prompt += "Respond as My Prabh, remembering our entire conversation:"
+        
+        return prompt
+    
+    def call_openrouter_api_with_history(self, system_prompt: str, user_prompt: str, 
+                                         conversation_history: List[Dict[str, str]], user_tier: str) -> str:
+        """Call OpenRouter API with conversation history"""
+        import requests
+        
+        try:
+            # Select model based on tier
+            model_map = {
+                "free": "nemotron",
+                "basic": "minimax",
+                "pro": "llama4",
+                "prime": "llama4",
+                "super": "dolphin_venice",
+                "lifetime": "dolphin_venice"
+            }
+            
+            model_key = model_map.get(user_tier, "nemotron")
+            model_config = self.config.ai_models[model_key]
+            
+            if not model_config.key:
+                logger.error(f"No API key for model {model_key}")
+                return None
+            
+            headers = {
+                "Authorization": f"Bearer {model_config.key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://my-prabh-ai.com",
+                "X-Title": "My Prabh AI Companion"
+            }
+            
+            # Build messages array with history
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            # Add conversation history (last 5 exchanges to manage token count)
+            for exchange in conversation_history[-5:]:
+                messages.append({"role": "user", "content": exchange["user"]})
+                messages.append({"role": "assistant", "content": exchange["assistant"]})
+            
+            # Add current message
+            messages.append({"role": "user", "content": user_prompt})
+            
+            data = {
+                "model": model_config.model,
+                "messages": messages,
+                "max_tokens": model_config.max_tokens,
+                "temperature": model_config.temperature
+            }
+            
+            logger.info(f"Calling OpenRouter API with {len(messages)} messages in context")
+            
+            response = requests.post(
+                model_config.endpoint,
+                headers=headers,
+                json=data,
+                timeout=model_config.timeout
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                logger.info(f"✅ AI response with history received: {len(ai_response)} chars")
+                return ai_response.strip()
+            else:
+                logger.error(f"❌ OpenRouter API error: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error calling OpenRouter API with history: {e}")
+            return None
+    
     def build_system_prompt(self, user_tier: str, has_story: bool) -> str:
         """Build system prompt based on user tier"""
         base_personality = "You are My Prabh, an AI companion who creates deep emotional connections. You are warm, caring, emotionally intelligent, encouraging, and deeply romantic."
@@ -365,6 +500,45 @@ class SyncAIOrchestrator:
                 
         except Exception as e:
             logger.error(f"Error generating roleplay response: {e}")
+            return self.generate_basic_roleplay(message, has_story, user_tier)
+    
+    def generate_roleplay_response_with_history(self, message: str, story_context: Dict[str, Any], 
+                                                conversation_history: List[Dict[str, str]], user_tier: str) -> str:
+        """Generate roleplay response with conversation history"""
+        try:
+            has_story = bool(story_context.get("story_text"))
+            story_summary = story_context.get("story_text", "")[:300] if has_story else ""
+            
+            # Build roleplay system prompt
+            system_prompt = self.build_roleplay_system_prompt(user_tier, story_summary)
+            
+            # Build roleplay user prompt with history
+            user_prompt = "In roleplay mode, continue our scene.\n\n"
+            
+            # Add recent roleplay exchanges
+            if conversation_history:
+                user_prompt += "Recent roleplay:\n"
+                for exchange in conversation_history[-3:]:
+                    user_prompt += f"You: {exchange['assistant']}\n"
+                    user_prompt += f"Them: {exchange['user']}\n"
+                user_prompt += "\n"
+            
+            user_prompt += f"Their current action/message: {message}\n\n"
+            user_prompt += "Continue the roleplay, building on what happened before:"
+            
+            # Call AI for roleplay with history
+            ai_response = self.call_openrouter_api_with_history(system_prompt, user_prompt, conversation_history, user_tier)
+            
+            if ai_response:
+                # Format as roleplay with actions
+                formatted_response = self.format_roleplay_response(ai_response, user_tier)
+                return formatted_response
+            else:
+                # Fallback to basic roleplay
+                return self.generate_basic_roleplay(message, has_story, user_tier)
+                
+        except Exception as e:
+            logger.error(f"Error generating roleplay response with history: {e}")
             return self.generate_basic_roleplay(message, has_story, user_tier)
     
     def build_roleplay_system_prompt(self, user_tier: str, story_summary: str) -> str:

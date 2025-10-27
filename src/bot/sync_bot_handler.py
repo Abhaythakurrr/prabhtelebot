@@ -4,6 +4,7 @@ Sync Telegram Bot Handler - No async issues
 
 import logging
 import uuid
+from datetime import datetime
 import telebot
 from telebot import types
 from src.story.story_processor import StoryProcessor
@@ -19,6 +20,8 @@ class SyncBotHandler:
         self.story_processor = StoryProcessor()
         self.ai_orchestrator = SyncAIOrchestrator()
         self.user_sessions = {}  # Store user conversation state
+        self.conversation_history = {}  # Store conversation history per user
+        self.max_history_length = 10  # Keep last 10 messages for context
     
     def register_handlers(self):
         """Register all bot handlers"""
@@ -412,16 +415,26 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
             )
     
     def handle_contextual_conversation(self, message, message_text):
-        """Handle conversation with story context"""
+        """Handle conversation with story context and conversation history"""
         user_id = str(message.from_user.id)
+        
+        # Initialize conversation history if not exists
+        if user_id not in self.conversation_history:
+            self.conversation_history[user_id] = []
         
         # Get story context if available
         story_context = self.user_sessions.get(user_id, {}).get("story_data", {})
         
-        # Generate contextual response
-        response = self.ai_orchestrator.generate_contextual_response(
-            message_text, story_context, user_tier="free"
+        # Get conversation history
+        conversation_history = self.conversation_history[user_id]
+        
+        # Generate contextual response with history
+        response = self.ai_orchestrator.generate_contextual_response_with_history(
+            message_text, story_context, conversation_history, user_tier="free"
         )
+        
+        # Add to conversation history
+        self.add_to_conversation_history(user_id, message_text, response)
         
         # Add website redirect for premium features
         if "upgrade" in response.lower() or "premium" in response.lower():
@@ -433,6 +446,24 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
             self.bot.send_message(message.chat.id, response, reply_markup=markup)
         else:
             self.bot.send_message(message.chat.id, response)
+    
+    def add_to_conversation_history(self, user_id: str, user_message: str, bot_response: str):
+        """Add message pair to conversation history"""
+        if user_id not in self.conversation_history:
+            self.conversation_history[user_id] = []
+        
+        # Add new message pair
+        self.conversation_history[user_id].append({
+            "user": user_message,
+            "assistant": bot_response,
+            "timestamp": str(datetime.now())
+        })
+        
+        # Keep only last N messages to manage context window
+        if len(self.conversation_history[user_id]) > self.max_history_length:
+            self.conversation_history[user_id] = self.conversation_history[user_id][-self.max_history_length:]
+        
+        logger.info(f"💬 Conversation history for user {user_id}: {len(self.conversation_history[user_id])} messages")
     
     def initiate_roleplay(self, call):
         """Initiate roleplay mode"""
@@ -473,14 +504,24 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
         )
     
     def handle_roleplay_message(self, message, message_text):
-        """Handle messages during roleplay"""
+        """Handle messages during roleplay with conversation history"""
         user_id = str(message.from_user.id)
         story_context = self.user_sessions[user_id]["story_data"]
         
-        # Generate roleplay response
-        response = self.ai_orchestrator.generate_roleplay_response(
-            message_text, story_context, user_tier="free"
+        # Initialize conversation history if not exists
+        if user_id not in self.conversation_history:
+            self.conversation_history[user_id] = []
+        
+        # Get conversation history
+        conversation_history = self.conversation_history[user_id]
+        
+        # Generate roleplay response with history
+        response = self.ai_orchestrator.generate_roleplay_response_with_history(
+            message_text, story_context, conversation_history, user_tier="free"
         )
+        
+        # Add to conversation history
+        self.add_to_conversation_history(user_id, message_text, response)
         
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
