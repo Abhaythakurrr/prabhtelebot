@@ -40,6 +40,18 @@ class SyncBotHandler:
         def plans_command(message):
             self.handle_plans_command(message)
         
+        @self.bot.message_handler(commands=['generate'])
+        def generate_command(message):
+            self.handle_generate_command(message)
+        
+        @self.bot.message_handler(commands=['voice'])
+        def voice_command(message):
+            self.handle_voice_command(message)
+        
+        @self.bot.message_handler(commands=['help'])
+        def help_command(message):
+            self.handle_help_command(message)
+        
         # Document handler
         @self.bot.message_handler(content_types=['document'])
         def document_handler(message):
@@ -80,7 +92,7 @@ class SyncBotHandler:
             types.InlineKeyboardButton("📚 Upload Your Story", callback_data="upload_story"),
             types.InlineKeyboardButton("💭 Tell Me Your Story", callback_data="tell_story"),
             types.InlineKeyboardButton("🎭 Start Roleplay", callback_data="start_roleplay"),
-            types.InlineKeyboardButton("🌐 Visit Website", url="https://web-production-43fe3.up.railway.app")
+            types.InlineKeyboardButton("🌐 Visit Website", url="https://web-production-43fe3.up.railway.app/")
         )
         
         welcome_message = f"""
@@ -327,6 +339,30 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
                 self.initiate_roleplay(call)
                 logger.info("✅ start_roleplay callback handled")
             
+            elif data == "gen_image":
+                logger.info("🎨 Handling gen_image callback")
+                self.generate_image(call)
+            
+            elif data == "gen_video":
+                logger.info("🎬 Handling gen_video callback")
+                self.generate_video(call)
+            
+            elif data == "gen_voice":
+                logger.info("🎙️ Handling gen_voice callback")
+                self.generate_voice(call)
+            
+            elif data == "gen_music":
+                logger.info("🎵 Handling gen_music callback")
+                self.generate_music(call)
+            
+            elif data == "clone_voice":
+                logger.info("🔊 Handling clone_voice callback")
+                self.clone_voice(call)
+            
+            elif data == "exit_roleplay":
+                logger.info("🚪 Handling exit_roleplay callback")
+                self.exit_roleplay(call)
+            
             else:
                 logger.warning(f"⚠️ Unknown callback data: {data}")
                 self.bot.answer_callback_query(call.id, "Unknown action")
@@ -448,7 +484,7 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
         
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
-            types.InlineKeyboardButton("🔥 Unlock Premium Roleplay", url="https://web-production-43fe3.up.railway.app/premium"),
+            types.InlineKeyboardButton("🔥 Unlock Premium Roleplay", url="https://web-production-43fe3.up.railway.app/pricing"),
             types.InlineKeyboardButton("🚪 Exit Roleplay", callback_data="exit_roleplay")
         )
         
@@ -457,4 +493,311 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
             f"{response}\n\n"
             f"💡 *Enjoying this? Premium unlocks NSFW scenarios, images, and voice responses!*",
             reply_markup=markup
+        )
+    
+    def handle_generate_command(self, message):
+        """Handle /generate command for image/video generation"""
+        user_id = str(message.from_user.id)
+        
+        # Check if user has story
+        if user_id not in self.user_sessions or not self.user_sessions[user_id].get("story_data"):
+            self.bot.send_message(
+                message.chat.id,
+                "📚 **Upload Your Story First!**\n\n"
+                "I need to know your story to create personalized content.\n\n"
+                "Use /story to upload your story, then try /generate again! 💕",
+                parse_mode='Markdown'
+            )
+            return
+        
+        # Show generation options
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🎨 Generate Image", callback_data="gen_image"),
+            types.InlineKeyboardButton("🎬 Generate Video", callback_data="gen_video")
+        )
+        markup.add(
+            types.InlineKeyboardButton("🎙️ Generate Voice", callback_data="gen_voice"),
+            types.InlineKeyboardButton("🎵 Generate Music", callback_data="gen_music")
+        )
+        
+        self.bot.send_message(
+            message.chat.id,
+            "🎨 **Content Generation**\n\n"
+            "Choose what you'd like me to create based on your story:\n\n"
+            "🎨 **Image** - Nostalgic scene from your memories\n"
+            "🎬 **Video** - Animated moment from your story\n"
+            "🎙️ **Voice** - My voice reading your favorite memory\n"
+            "🎵 **Music** - Soundtrack matching your story's mood\n\n"
+            "💎 *Free users: 3 images + 3 videos per day*\n"
+            "🔥 *Premium: Unlimited generation!*",
+            reply_markup=markup,
+            parse_mode='Markdown'
+        )
+    
+    def handle_voice_command(self, message):
+        """Handle /voice command for voice message generation"""
+        user_id = str(message.from_user.id)
+        
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton("🎙️ Generate Voice Message", callback_data="gen_voice"),
+            types.InlineKeyboardButton("🔊 Clone My Voice", callback_data="clone_voice"),
+            types.InlineKeyboardButton("💎 Upgrade for More", url="https://web-production-43fe3.up.railway.app/pricing")
+        )
+        
+        self.bot.send_message(
+            message.chat.id,
+            "🎙️ **Voice Features**\n\n"
+            "I can speak to you with my AI voice!\n\n"
+            "**Available Options:**\n"
+            "• Generate voice message from text\n"
+            "• Clone your voice (Premium)\n"
+            "• Custom voice responses (Premium)\n\n"
+            "💎 **Free:** 1 voice message per day\n"
+            "🔥 **Premium:** Unlimited voice messages + cloning!",
+            reply_markup=markup,
+            parse_mode='Markdown'
+        )
+    
+    def handle_help_command(self, message):
+        """Handle /help command"""
+        help_text = """
+🤖 **My Prabh AI Companion - Commands**
+
+**📚 Story & Memory**
+/start - Welcome and get started
+/story - Upload your story
+/roleplay - Start roleplay mode
+
+**🎨 Content Generation**
+/generate - Create images, videos, music
+/voice - Voice messages and cloning
+
+**💎 Subscription**
+/plans - View pricing and features
+
+**💬 Chat**
+Just send me a message and I'll respond with AI!
+
+**🎭 Roleplay Mode**
+After uploading your story, I can roleplay scenarios based on your memories.
+
+**🔥 Premium Features**
+• Unlimited image/video generation
+• Voice cloning
+• NSFW content
+• Proactive messaging
+• Priority responses
+
+Visit our website for more: https://web-production-43fe3.up.railway.app
+
+Need help? Just ask me anything! 💕
+        """
+        
+        self.bot.send_message(message.chat.id, help_text, parse_mode='Markdown')
+  
+  
+    def generate_image(self, call):
+        """Generate image from story"""
+        user_id = str(call.from_user.id)
+        
+        try:
+            self.bot.edit_message_text(
+                "🎨 **Generating Your Image...**\n\n"
+                "Creating a beautiful scene from your story memories...\n"
+                "⏳ This may take 30-60 seconds...",
+                call.message.chat.id,
+                call.message.message_id,
+                parse_mode='Markdown'
+            )
+            
+            # Get story context
+            story_context = self.user_sessions.get(user_id, {}).get("story_data", {})
+            
+            # Import content generator
+            from src.generation.content_generator import ContentGenerator
+            generator = ContentGenerator()
+            
+            # Generate image
+            result = generator.generate_image_from_memory(
+                user_id=user_id,
+                memory_context={
+                    "emotion_type": "nostalgic",
+                    "themes": ["romance", "memories"],
+                    "story_text": story_context.get("story_text", "")
+                },
+                user_tier="free"
+            )
+            
+            if result["success"] and "image_url" in result:
+                # Send image
+                self.bot.send_photo(
+                    call.message.chat.id,
+                    result["image_url"],
+                    caption=f"🎨 **Your Nostalgic Memory**\n\n"
+                            f"Generated from your story with love 💕\n\n"
+                            f"*Prompt:* {result['prompt'][:100]}...\n\n"
+                            f"💎 Want more? Upgrade for unlimited generation!"
+                )
+                logger.info(f"✅ Image generated for user {user_id}")
+            else:
+                error_msg = result.get('error', 'Unknown error')
+                self.bot.send_message(
+                    call.message.chat.id,
+                    f"❌ **Generation Failed**\n\n"
+                    f"Error: {error_msg}\n\n"
+                    f"💡 This might be because:\n"
+                    f"• API keys not configured\n"
+                    f"• Daily limit reached\n"
+                    f"• Service temporarily unavailable\n\n"
+                    f"Try again later or upgrade for priority access!"
+                )
+                logger.error(f"❌ Image generation failed: {error_msg}")
+                
+        except Exception as e:
+            logger.error(f"❌ Error in generate_image: {e}", exc_info=True)
+            self.bot.send_message(
+                call.message.chat.id,
+                "❌ Something went wrong. Please try again later!"
+            )
+    
+    def generate_video(self, call):
+        """Generate video from story"""
+        user_id = str(call.from_user.id)
+        
+        try:
+            self.bot.edit_message_text(
+                "🎬 **Generating Your Video...**\n\n"
+                "Creating an animated scene from your memories...\n"
+                "⏳ This may take 2-5 minutes...\n\n"
+                "I'll notify you when it's ready! 💕",
+                call.message.chat.id,
+                call.message.message_id,
+                parse_mode='Markdown'
+            )
+            
+            # Get story context
+            story_context = self.user_sessions.get(user_id, {}).get("story_data", {})
+            
+            # Import content generator
+            from src.generation.content_generator import ContentGenerator
+            generator = ContentGenerator()
+            
+            # Generate video
+            result = generator.generate_video_from_memory(
+                user_id=user_id,
+                memory_context={
+                    "emotion_type": "romantic",
+                    "themes": ["love", "memories"],
+                    "story_text": story_context.get("story_text", "")
+                },
+                user_tier="free"
+            )
+            
+            if result["success"] and "video_url" in result:
+                # Send video
+                self.bot.send_video(
+                    call.message.chat.id,
+                    result["video_url"],
+                    caption=f"🎬 **Your Memory in Motion**\n\n"
+                            f"A cinematic moment from your story 💕\n\n"
+                            f"💎 Upgrade for HD videos and unlimited generation!"
+                )
+                logger.info(f"✅ Video generated for user {user_id}")
+            else:
+                error_msg = result.get('error', 'Unknown error')
+                self.bot.send_message(
+                    call.message.chat.id,
+                    f"❌ **Video Generation Failed**\n\n"
+                    f"Error: {error_msg}\n\n"
+                    f"💡 Video generation requires:\n"
+                    f"• API keys configured\n"
+                    f"• Premium subscription (for best quality)\n"
+                    f"• Sufficient credits\n\n"
+                    f"Upgrade to unlock video generation!"
+                )
+                logger.error(f"❌ Video generation failed: {error_msg}")
+                
+        except Exception as e:
+            logger.error(f"❌ Error in generate_video: {e}", exc_info=True)
+            self.bot.send_message(
+                call.message.chat.id,
+                "❌ Something went wrong. Please try again later!"
+            )
+    
+    def generate_voice(self, call):
+        """Generate voice message"""
+        user_id = str(call.from_user.id)
+        
+        try:
+            # Ask for text
+            self.bot.edit_message_text(
+                "🎙️ **Voice Message Generation**\n\n"
+                "Send me the text you want me to speak, and I'll generate a voice message for you!\n\n"
+                "Example: 'I love you and miss you so much'\n\n"
+                "💎 Free: 1 voice message per day\n"
+                "🔥 Premium: Unlimited voice messages!",
+                call.message.chat.id,
+                call.message.message_id,
+                parse_mode='Markdown'
+            )
+            
+            # Set user state to waiting for voice text
+            if user_id not in self.user_sessions:
+                self.user_sessions[user_id] = {}
+            self.user_sessions[user_id]["stage"] = "waiting_voice_text"
+            
+        except Exception as e:
+            logger.error(f"❌ Error in generate_voice: {e}", exc_info=True)
+    
+    def generate_music(self, call):
+        """Generate music from story mood"""
+        self.bot.edit_message_text(
+            "🎵 **Music Generation**\n\n"
+            "Music generation is coming soon!\n\n"
+            "I'll create custom soundtracks based on your story's mood and emotions.\n\n"
+            "💎 This will be a premium feature.\n\n"
+            "Stay tuned! 🎶",
+            call.message.chat.id,
+            call.message.message_id,
+            parse_mode='Markdown'
+        )
+    
+    def clone_voice(self, call):
+        """Voice cloning feature"""
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton("💎 Upgrade to Premium", url="https://web-production-43fe3.up.railway.app/pricing")
+        )
+        
+        self.bot.edit_message_text(
+            "🔊 **Voice Cloning**\n\n"
+            "Voice cloning allows me to speak in YOUR voice!\n\n"
+            "**How it works:**\n"
+            "1. Upload a 30-second voice sample\n"
+            "2. I analyze and clone your voice\n"
+            "3. I can now speak to you in your own voice!\n\n"
+            "🔥 **This is a Premium feature**\n\n"
+            "Upgrade to unlock voice cloning!",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode='Markdown'
+        )
+    
+    def exit_roleplay(self, call):
+        """Exit roleplay mode"""
+        user_id = str(call.from_user.id)
+        
+        if user_id in self.user_sessions:
+            self.user_sessions[user_id]["stage"] = "conversation"
+        
+        self.bot.edit_message_text(
+            "🚪 **Exited Roleplay Mode**\n\n"
+            "Back to normal conversation mode.\n\n"
+            "You can start roleplay again anytime with /roleplay! 💕",
+            call.message.chat.id,
+            call.message.message_id,
+            parse_mode='Markdown'
         )
