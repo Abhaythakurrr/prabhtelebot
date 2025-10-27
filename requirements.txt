@@ -19,6 +19,7 @@ openai==1.12.0
 numpy>=1.26.0
 
 # Bytez AI Integration
+bytez>=0.1.0
 langchain_bytez==0.0.7
 langchain==0.3.17
 langchain-core>=0.3.33

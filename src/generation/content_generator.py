@@ -64,111 +64,69 @@ class ContentGenerator:
             return {"success": False, "error": str(e)}
     
     def call_bytez_image_api(self, prompt: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
-        """Call Bytez API with retry logic and queue management"""
-        import requests
+        """Call Bytez SDK with retry logic"""
         import time
         
         max_retries = 3
-        retry_delay = 2  # seconds
+        retry_delay = 2
         
         for attempt in range(max_retries):
             try:
                 # Try both API keys
                 api_keys = [self.config.bytez_api_key_1, self.config.bytez_api_key_2]
-                api_keys = [k for k in api_keys if k]  # Filter out None
+                api_keys = [k for k in api_keys if k]
                 
                 if not api_keys:
                     logger.error("No Bytez API keys configured")
                     return {
-                        "success": False, 
-                        "error": "API keys not configured. Please add BYTEZ_API_KEY_1 and BYTEZ_API_KEY_2 to environment variables."
+                        "success": False,
+                        "error": "API keys not configured. Please add BYTEZ_API_KEY_1 to environment."
                     }
                 
                 # Rotate through API keys
                 api_key = api_keys[attempt % len(api_keys)]
                 
-                # Bytez API endpoint
-                url = "https://api.bytez.com/v1/image/generate"
-                
-                headers = {
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                }
-                
-                data = {
-                    "model": model_info["model"],
-                    "prompt": prompt,
-                    "num_images": 1,
-                    "size": "1024x1024",
-                    "quality": model_info.get("quality", "standard")
-                }
-                
-                logger.info(f"🎨 Attempt {attempt + 1}/{max_retries}: Calling Bytez API")
+                logger.info(f"🎨 Attempt {attempt + 1}/{max_retries}: Using Bytez SDK")
                 start_time = time.time()
                 
-                response = requests.post(url, headers=headers, json=data, timeout=90)
+                # Use Bytez SDK
+                from bytez import Bytez
+                sdk = Bytez(api_key)
+                
+                # Get model
+                model_name = model_info["model"]
+                model = sdk.model(model_name)
+                
+                # Run generation
+                output, error = model.run(prompt)
                 generation_time = time.time() - start_time
                 
-                if response.status_code == 200:
-                    result = response.json()
-                    image_url = result.get("data", [{}])[0].get("url")
-                    
-                    if image_url:
-                        logger.info(f"✅ Image generated successfully in {generation_time:.2f}s")
-                        return {
-                            "success": True,
-                            "image_url": image_url,
-                            "generation_time": f"{generation_time:.2f}s"
-                        }
-                    else:
-                        logger.error("No image URL in response")
-                        if attempt < max_retries - 1:
-                            logger.info(f"⏳ Retrying in {retry_delay}s...")
-                            time.sleep(retry_delay)
-                            continue
-                        return {"success": False, "error": "No image URL returned after retries"}
-                
-                elif response.status_code == 401:
-                    logger.error(f"❌ API key unauthorized (attempt {attempt + 1})")
-                    if attempt < max_retries - 1:
-                        logger.info(f"⏳ Trying alternate API key in {retry_delay}s...")
-                        time.sleep(retry_delay)
-                        continue
-                    return {
-                        "success": False, 
-                        "error": "API authentication failed. Please check your Bytez API keys."
-                    }
-                
-                elif response.status_code == 429:
-                    logger.warning(f"⚠️ Rate limit hit (attempt {attempt + 1})")
-                    if attempt < max_retries - 1:
-                        wait_time = retry_delay * (attempt + 1)
-                        logger.info(f"⏳ Waiting {wait_time}s before retry...")
-                        time.sleep(wait_time)
-                        continue
-                    return {
-                        "success": False,
-                        "error": "Rate limit reached. Your request has been queued. Please try again in a few minutes."
-                    }
-                
-                else:
-                    logger.error(f"❌ Bytez API error: {response.status_code} - {response.text}")
+                if error:
+                    logger.error(f"❌ Bytez SDK error (attempt {attempt + 1}): {error}")
                     if attempt < max_retries - 1:
                         logger.info(f"⏳ Retrying in {retry_delay}s...")
                         time.sleep(retry_delay)
                         continue
-                    return {"success": False, "error": f"API error: {response.status_code}"}
-                    
-            except requests.exceptions.Timeout:
-                logger.error(f"⏱️ Request timeout (attempt {attempt + 1})")
-                if attempt < max_retries - 1:
-                    logger.info(f"⏳ Retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                    continue
-                return {"success": False, "error": "Request timeout. Server is busy, please try again."}
+                    return {"success": False, "error": str(error)}
                 
+                if output:
+                    # Output is the image URL or base64
+                    logger.info(f"✅ Image generated successfully in {generation_time:.2f}s")
+                    return {
+                        "success": True,
+                        "image_url": output,
+                        "generation_time": f"{generation_time:.2f}s"
+                    }
+                else:
+                    logger.error("No output from Bytez SDK")
+                    if attempt < max_retries - 1:
+                        logger.info(f"⏳ Retrying in {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    return {"success": False, "error": "No output returned"}
+                    
             except Exception as e:
-                logger.error(f"❌ Error calling Bytez API (attempt {attempt + 1}): {e}")
+                logger.error(f"❌ Error with Bytez SDK (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
                     logger.info(f"⏳ Retrying in {retry_delay}s...")
                     time.sleep(retry_delay)
@@ -221,12 +179,11 @@ class ContentGenerator:
             return {"success": False, "error": str(e)}
     
     def call_bytez_video_api(self, prompt: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
-        """Call Bytez API for video with retry logic and queue management"""
-        import requests
+        """Call Bytez SDK for video with retry logic"""
         import time
         
         max_retries = 3
-        retry_delay = 3  # seconds (longer for video)
+        retry_delay = 3
         
         for attempt in range(max_retries):
             try:
@@ -238,93 +195,53 @@ class ContentGenerator:
                     logger.error("No Bytez API keys configured")
                     return {
                         "success": False,
-                        "error": "API keys not configured. Please add BYTEZ_API_KEY_1 and BYTEZ_API_KEY_2 to environment variables."
+                        "error": "API keys not configured. Please add BYTEZ_API_KEY_1 to environment."
                     }
                 
                 # Rotate through API keys
                 api_key = api_keys[attempt % len(api_keys)]
                 
-                # Bytez API endpoint
-                url = "https://api.bytez.com/v1/video/generate"
-                
-                headers = {
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                }
-                
-                data = {
-                    "model": model_info["model"],
-                    "prompt": prompt,
-                    "duration": model_info.get("duration", "5 seconds"),
-                    "quality": model_info.get("quality", "standard")
-                }
-                
-                logger.info(f"🎬 Attempt {attempt + 1}/{max_retries}: Calling Bytez API for video")
+                logger.info(f"🎬 Attempt {attempt + 1}/{max_retries}: Using Bytez SDK for video")
                 start_time = time.time()
                 
-                response = requests.post(url, headers=headers, json=data, timeout=180)
+                # Use Bytez SDK
+                from bytez import Bytez
+                sdk = Bytez(api_key)
+                
+                # Get model
+                model_name = model_info["model"]
+                model = sdk.model(model_name)
+                
+                # Run generation
+                output, error = model.run(prompt)
                 generation_time = time.time() - start_time
                 
-                if response.status_code == 200:
-                    result = response.json()
-                    video_url = result.get("data", {}).get("url")
-                    
-                    if video_url:
-                        logger.info(f"✅ Video generated successfully in {generation_time:.2f}s")
-                        return {
-                            "success": True,
-                            "video_url": video_url,
-                            "generation_time": f"{generation_time:.2f}s"
-                        }
-                    else:
-                        logger.error("No video URL in response")
-                        if attempt < max_retries - 1:
-                            logger.info(f"⏳ Retrying in {retry_delay}s...")
-                            time.sleep(retry_delay)
-                            continue
-                        return {"success": False, "error": "No video URL returned after retries"}
-                
-                elif response.status_code == 401:
-                    logger.error(f"❌ API key unauthorized (attempt {attempt + 1})")
-                    if attempt < max_retries - 1:
-                        logger.info(f"⏳ Trying alternate API key in {retry_delay}s...")
-                        time.sleep(retry_delay)
-                        continue
-                    return {
-                        "success": False,
-                        "error": "API authentication failed. Please check your Bytez API keys."
-                    }
-                
-                elif response.status_code == 429:
-                    logger.warning(f"⚠️ Rate limit hit (attempt {attempt + 1})")
-                    if attempt < max_retries - 1:
-                        wait_time = retry_delay * (attempt + 2)
-                        logger.info(f"⏳ Waiting {wait_time}s before retry...")
-                        time.sleep(wait_time)
-                        continue
-                    return {
-                        "success": False,
-                        "error": "Rate limit reached. Your request has been queued. Please try again in a few minutes."
-                    }
-                
-                else:
-                    logger.error(f"❌ Bytez API error: {response.status_code} - {response.text}")
+                if error:
+                    logger.error(f"❌ Bytez SDK error (attempt {attempt + 1}): {error}")
                     if attempt < max_retries - 1:
                         logger.info(f"⏳ Retrying in {retry_delay}s...")
                         time.sleep(retry_delay)
                         continue
-                    return {"success": False, "error": f"API error: {response.status_code}"}
-                    
-            except requests.exceptions.Timeout:
-                logger.error(f"⏱️ Request timeout (attempt {attempt + 1})")
-                if attempt < max_retries - 1:
-                    logger.info(f"⏳ Retrying in {retry_delay}s...")
-                    time.sleep(retry_delay)
-                    continue
-                return {"success": False, "error": "Request timeout. Video generation takes time, please try again."}
+                    return {"success": False, "error": str(error)}
                 
+                if output:
+                    # Output is the video URL
+                    logger.info(f"✅ Video generated successfully in {generation_time:.2f}s")
+                    return {
+                        "success": True,
+                        "video_url": output,
+                        "generation_time": f"{generation_time:.2f}s"
+                    }
+                else:
+                    logger.error("No output from Bytez SDK")
+                    if attempt < max_retries - 1:
+                        logger.info(f"⏳ Retrying in {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                    return {"success": False, "error": "No output returned"}
+                    
             except Exception as e:
-                logger.error(f"❌ Error calling Bytez API (attempt {attempt + 1}): {e}")
+                logger.error(f"❌ Error with Bytez SDK (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
                     logger.info(f"⏳ Retrying in {retry_delay}s...")
                     time.sleep(retry_delay)
