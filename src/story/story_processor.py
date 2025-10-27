@@ -268,67 +268,181 @@ class StoryProcessor:
             ]
     
     def generate_roleplay_scenarios_sync(self, story_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Sync version of roleplay scenario generation"""
+        """Generate REAL roleplay scenarios using AI"""
         try:
-            # Simple sync analysis
-            story_text = story_data.get("story_text", "").lower()
+            story_text = story_data.get("story_text", "")
             
-            scenarios = []
+            # Try AI generation first
+            ai_scenarios = self.generate_scenarios_with_ai(story_text)
             
-            # Check for themes in story
-            if any(word in story_text for word in ["love", "romantic", "heart", "kiss"]):
-                scenarios.append({
-                    "title": "💕 Romantic Evening",
-                    "preview": "A intimate dinner date with deep conversation and romantic tension...",
-                    "type": "romance"
-                })
+            if ai_scenarios:
+                return ai_scenarios
             
-            if any(word in story_text for word in ["adventure", "journey", "travel", "explore"]):
-                scenarios.append({
-                    "title": "🗺️ Epic Adventure",
-                    "preview": "An exciting journey filled with challenges and discoveries...",
-                    "type": "adventure"
-                })
-            
-            if any(word in story_text for word in ["drama", "conflict", "emotional", "tension"]):
-                scenarios.append({
-                    "title": "🎭 Emotional Drama",
-                    "preview": "A tense situation that tests relationships and reveals true feelings...",
-                    "type": "drama"
-                })
-            
-            # Adult scenario (premium)
-            if any(word in story_text for word in ["intimate", "passion", "desire", "adult"]):
-                scenarios.append({
-                    "title": "🔥 Intimate Moments",
-                    "preview": "A passionate encounter exploring deeper desires... (Premium Only)",
-                    "type": "adult",
-                    "premium": True
-                })
-            
-            # Default scenarios if no specific themes
-            if not scenarios:
-                scenarios = [
-                    {
-                        "title": "💬 Deep Conversation",
-                        "preview": "A meaningful chat that brings you closer together...",
-                        "type": "conversation"
-                    },
-                    {
-                        "title": "🎮 Fun Activity",
-                        "preview": "Engaging in a fun activity that reveals personality...",
-                        "type": "activity"
-                    }
-                ]
-            
-            return scenarios
-            
+            # Fallback to rule-based generation
+            return self.generate_scenarios_rule_based(story_text)
+                
         except Exception as e:
-            logger.error(f"Error generating sync roleplay scenarios: {e}")
-            return [
-                {
-                    "title": "💬 Getting to Know You",
-                    "preview": "Let's have a conversation and learn about each other...",
-                    "type": "conversation"
-                }
-            ]
+            logger.error(f"Error generating roleplay scenarios: {e}")
+            return self.get_default_scenarios()
+    
+    def generate_scenarios_with_ai(self, story_text: str) -> List[Dict[str, Any]]:
+        """Generate scenarios using AI"""
+        import requests
+        import os
+        
+        try:
+            api_key = os.getenv("NEMOTRON_API_KEY")
+            if not api_key:
+                return None
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://my-prabh-ai.com"
+            }
+            
+            prompt = f"""Based on this story, create 4 roleplay scenarios:
+
+Story: {story_text[:500]}
+
+Create scenarios with:
+1. Title (with emoji)
+2. Brief preview (one sentence)
+3. Type (romance/adventure/drama/intimate)
+
+Format as: TITLE | PREVIEW | TYPE"""
+            
+            data = {
+                "model": "nvidia/nemotron-nano-9b-v2:free",
+                "messages": [
+                    {"role": "system", "content": "You are a creative roleplay scenario generator."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 400,
+                "temperature": 0.8
+            }
+            
+            logger.info("🎭 Generating roleplay scenarios with AI...")
+            
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=20
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                scenarios = self.parse_ai_scenarios(ai_response)
+                logger.info(f"✅ Generated {len(scenarios)} AI scenarios")
+                return scenarios
+            else:
+                logger.error(f"❌ AI scenario generation failed: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error in AI scenario generation: {e}")
+            return None
+    
+    def parse_ai_scenarios(self, ai_response: str) -> List[Dict[str, Any]]:
+        """Parse AI response into scenarios"""
+        scenarios = []
+        lines = ai_response.strip().split('\n')
+        
+        for line in lines:
+            if '|' in line:
+                parts = line.split('|')
+                if len(parts) >= 3:
+                    scenarios.append({
+                        "title": parts[0].strip(),
+                        "preview": parts[1].strip(),
+                        "type": parts[2].strip().lower()
+                    })
+        
+        # If parsing failed, create from text
+        if not scenarios:
+            scenarios = self.extract_scenarios_from_text(ai_response)
+        
+        return scenarios[:4]
+    
+    def extract_scenarios_from_text(self, text: str) -> List[Dict[str, Any]]:
+        """Extract scenarios from unstructured AI text"""
+        scenarios = []
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        
+        for i, line in enumerate(lines[:4]):
+            scenarios.append({
+                "title": line[:50] if len(line) > 50 else line,
+                "preview": lines[i+1] if i+1 < len(lines) else "An engaging roleplay scenario...",
+                "type": "general"
+            })
+        
+        return scenarios
+    
+    def generate_scenarios_rule_based(self, story_text: str) -> List[Dict[str, Any]]:
+        """Rule-based scenario generation"""
+        story_lower = story_text.lower()
+        scenarios = []
+        
+        # Check for themes in story
+        if any(word in story_lower for word in ["love", "romantic", "heart", "kiss"]):
+            scenarios.append({
+                "title": "💕 Romantic Evening",
+                "preview": "An intimate dinner date with deep conversation and romantic tension...",
+                "type": "romance"
+            })
+        
+        if any(word in story_lower for word in ["adventure", "journey", "travel", "explore"]):
+            scenarios.append({
+                "title": "🗺️ Epic Adventure",
+                "preview": "An exciting journey filled with challenges and discoveries...",
+                "type": "adventure"
+            })
+        
+        if any(word in story_lower for word in ["drama", "conflict", "emotional", "tension"]):
+            scenarios.append({
+                "title": "🎭 Emotional Drama",
+                "preview": "A tense situation that tests relationships and reveals true feelings...",
+                "type": "drama"
+            })
+        
+        # Adult scenario (premium)
+        if any(word in story_lower for word in ["intimate", "passion", "desire", "adult"]):
+            scenarios.append({
+                "title": "🔥 Intimate Moments",
+                "preview": "A passionate encounter exploring deeper desires... (Premium Only)",
+                "type": "adult",
+                "premium": True
+            })
+        
+        # Add default scenarios if needed
+        if len(scenarios) < 4:
+            scenarios.extend(self.get_default_scenarios()[:4-len(scenarios)])
+        
+        return scenarios[:4]
+    
+    def get_default_scenarios(self) -> List[Dict[str, Any]]:
+        """Get default scenarios"""
+        return [
+            {
+                "title": "💬 Deep Conversation",
+                "preview": "A meaningful chat that brings you closer together...",
+                "type": "conversation"
+            },
+            {
+                "title": "🎮 Fun Activity",
+                "preview": "Engaging in a fun activity that reveals personality...",
+                "type": "activity"
+            },
+            {
+                "title": "🌙 Romantic Evening",
+                "preview": "A cozy evening together exploring feelings...",
+                "type": "romance"
+            },
+            {
+                "title": "🎭 Creative Roleplay",
+                "preview": "Let's create an imaginative scenario together...",
+                "type": "creative"
+            }
+        ]

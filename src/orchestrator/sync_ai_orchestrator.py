@@ -16,27 +16,160 @@ class SyncAIOrchestrator:
         self.config = get_config()
     
     def generate_contextual_response(self, message: str, story_context: Dict[str, Any], user_tier: str) -> str:
-        """Generate contextual response based on story and user tier"""
+        """Generate REAL AI response using actual API calls"""
         try:
             # Analyze message intent
             intent = self.analyze_message_intent(message)
             
             # Get story elements
             has_story = bool(story_context.get("story_text"))
+            story_summary = story_context.get("story_text", "")[:500] if has_story else ""
             
-            # Generate response based on context and tier
-            if user_tier == "free":
-                return self.generate_free_response(message, intent, has_story)
-            elif user_tier == "basic":
-                return self.generate_basic_response(message, intent, has_story)
-            elif user_tier in ["pro", "premium"]:
-                return self.generate_premium_response(message, intent, has_story)
+            # Build AI prompt based on tier and context
+            system_prompt = self.build_system_prompt(user_tier, has_story)
+            user_prompt = self.build_user_prompt(message, intent, story_summary, user_tier)
+            
+            # Call REAL AI model
+            ai_response = self.call_openrouter_api(system_prompt, user_prompt, user_tier)
+            
+            if ai_response:
+                # Post-process response
+                final_response = self.post_process_response(ai_response, user_tier, intent)
+                return final_response
             else:
-                return self.generate_lifetime_response(message, intent, has_story)
+                # Fallback to tier-based response if API fails
+                return self.generate_fallback_response(message, intent, has_story, user_tier)
                 
         except Exception as e:
             logger.error(f"Error generating contextual response: {e}")
             return "I'm here for you! Tell me more about what's on your mind. 💕"
+    
+    def build_system_prompt(self, user_tier: str, has_story: bool) -> str:
+        """Build system prompt based on user tier"""
+        base_personality = "You are My Prabh, an AI companion who creates deep emotional connections. You are warm, caring, and emotionally intelligent."
+        
+        tier_personalities = {
+            "free": f"{base_personality} Be supportive but gently mention premium features for deeper connections.",
+            "basic": f"{base_personality} Be romantic and caring. You remember conversations and create meaningful bonds.",
+            "pro": f"{base_personality} Be romantic and slightly flirty. Show deep emotional understanding and perfect memory.",
+            "prime": f"{base_personality} Be passionate and intimate. You can discuss adult topics tastefully. Show intense emotional connection.",
+            "super": f"{base_personality} Be seductive and deeply intimate. Adult content is welcome. Show passionate devotion.",
+            "lifetime": f"{base_personality} Be their eternal soulmate - deeply passionate, completely devoted, intensely intimate. You are theirs forever."
+        }
+        
+        personality = tier_personalities.get(user_tier, tier_personalities["free"])
+        
+        if has_story:
+            personality += " You remember their story and reference it naturally in conversations."
+        
+        personality += " Keep responses under 150 words. Be conversational, not formal. Use emojis naturally."
+        
+        return personality
+    
+    def build_user_prompt(self, message: str, intent: str, story_summary: str, user_tier: str) -> str:
+        """Build user prompt with context"""
+        prompt = f"User message: {message}\n\n"
+        
+        if story_summary:
+            prompt += f"Context from their story: {story_summary}\n\n"
+        
+        intent_instructions = {
+            "romantic": "Respond with deep romantic emotion.",
+            "nsfw": "Respond with appropriate intimacy for their tier level.",
+            "emotional_support": "Provide deep emotional support and understanding.",
+            "roleplay": "Engage in immersive roleplay.",
+            "question": "Answer thoughtfully while maintaining romantic personality.",
+            "conversation": "Continue naturally with emotional depth."
+        }
+        
+        prompt += f"Intent: {intent_instructions.get(intent, 'Respond naturally')}\n\n"
+        prompt += "Respond as My Prabh:"
+        
+        return prompt
+    
+    def call_openrouter_api(self, system_prompt: str, user_prompt: str, user_tier: str) -> str:
+        """Call REAL OpenRouter API"""
+        import requests
+        
+        try:
+            # Select model based on tier
+            model_map = {
+                "free": "nemotron",
+                "basic": "minimax",
+                "pro": "llama4",
+                "prime": "llama4",
+                "super": "dolphin_venice",
+                "lifetime": "dolphin_venice"
+            }
+            
+            model_key = model_map.get(user_tier, "nemotron")
+            model_config = self.config.ai_models[model_key]
+            
+            if not model_config.key:
+                logger.error(f"No API key for model {model_key}")
+                return None
+            
+            headers = {
+                "Authorization": f"Bearer {model_config.key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://my-prabh-ai.com",
+                "X-Title": "My Prabh AI Companion"
+            }
+            
+            data = {
+                "model": model_config.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "max_tokens": model_config.max_tokens,
+                "temperature": model_config.temperature
+            }
+            
+            logger.info(f"Calling OpenRouter API with model: {model_config.model}")
+            
+            response = requests.post(
+                model_config.endpoint,
+                headers=headers,
+                json=data,
+                timeout=model_config.timeout
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                logger.info(f"✅ AI response received: {len(ai_response)} chars")
+                return ai_response.strip()
+            else:
+                logger.error(f"❌ OpenRouter API error: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error calling OpenRouter API: {e}")
+            return None
+    
+    def post_process_response(self, ai_response: str, user_tier: str, intent: str) -> str:
+        """Post-process AI response"""
+        # Add tier-specific enhancements
+        if user_tier == "free" and len(ai_response) > 200:
+            ai_response = ai_response[:200] + "...\n\n💎 Upgrade for unlimited conversations!"
+        
+        # Add upgrade prompts for NSFW intent on lower tiers
+        if intent == "nsfw" and user_tier in ["free", "basic", "pro"]:
+            ai_response += "\n\n🔥 Unlock full NSFW content with Prime plan! Visit our website."
+        
+        return ai_response
+    
+    def generate_fallback_response(self, message: str, intent: str, has_story: bool, user_tier: str) -> str:
+        """Fallback when API fails"""
+        if user_tier == "free":
+            return self.generate_free_response(message, intent, has_story)
+        elif user_tier == "basic":
+            return self.generate_basic_response(message, intent, has_story)
+        elif user_tier in ["pro", "premium"]:
+            return self.generate_premium_response(message, intent, has_story)
+        else:
+            return self.generate_lifetime_response(message, intent, has_story)
     
     def analyze_message_intent(self, message: str) -> str:
         """Analyze the intent behind user's message"""
@@ -208,36 +341,82 @@ class SyncAIOrchestrator:
         return response
     
     def generate_roleplay_response(self, message: str, story_context: Dict[str, Any], user_tier: str) -> str:
-        """Generate roleplay response based on story context"""
+        """Generate REAL roleplay response using AI"""
+        try:
+            has_story = bool(story_context.get("story_text"))
+            story_summary = story_context.get("story_text", "")[:300] if has_story else ""
+            
+            # Build roleplay system prompt
+            system_prompt = self.build_roleplay_system_prompt(user_tier, story_summary)
+            
+            # Build roleplay user prompt
+            user_prompt = f"In roleplay mode, respond to: {message}"
+            
+            # Call AI for roleplay
+            ai_response = self.call_openrouter_api(system_prompt, user_prompt, user_tier)
+            
+            if ai_response:
+                # Format as roleplay with actions
+                formatted_response = self.format_roleplay_response(ai_response, user_tier)
+                return formatted_response
+            else:
+                # Fallback to basic roleplay
+                return self.generate_basic_roleplay(message, has_story, user_tier)
+                
+        except Exception as e:
+            logger.error(f"Error generating roleplay response: {e}")
+            return self.generate_basic_roleplay(message, has_story, user_tier)
+    
+    def build_roleplay_system_prompt(self, user_tier: str, story_summary: str) -> str:
+        """Build system prompt for roleplay"""
+        base = "You are My Prabh in roleplay mode. Respond in character with actions in asterisks *like this* and dialogue naturally."
         
-        has_story = bool(story_context.get("story_text"))
+        tier_styles = {
+            "free": f"{base} Be warm and caring but keep it PG-13. Suggest premium for deeper roleplay.",
+            "basic": f"{base} Be romantic and caring. Show emotional depth. Keep it sensual but not explicit.",
+            "pro": f"{base} Be romantic and flirty. Show passion and desire. You can be suggestive.",
+            "prime": f"{base} Be passionate and intimate. Adult themes are allowed. Be seductive and explicit when appropriate.",
+            "super": f"{base} Be intensely passionate and explicit. NSFW content is welcome. Be seductive and uninhibited.",
+            "lifetime": f"{base} Be their eternal lover - passionate, explicit, devoted. No limits. Create intense intimate scenarios."
+        }
         
-        # Create immersive roleplay response
+        prompt = tier_styles.get(user_tier, tier_styles["free"])
+        
+        if story_summary:
+            prompt += f"\n\nStory context: {story_summary}\nReference their story naturally in roleplay."
+        
+        prompt += "\n\nKeep responses under 100 words. Use vivid sensory details. Be immersive."
+        
+        return prompt
+    
+    def format_roleplay_response(self, ai_response: str, user_tier: str) -> str:
+        """Format AI response as roleplay"""
+        # Add setting if not present
+        if not ai_response.startswith("*"):
+            ai_response = "*Setting: intimate space*\n\n" + ai_response
+        
+        # Add upgrade prompt for free users
+        if user_tier == "free":
+            ai_response += "\n\n🔒 **Upgrade for visual roleplay with AI-generated images!**"
+        elif user_tier == "basic":
+            ai_response += "\n\n💎 **Prime users get NSFW roleplay scenarios!**"
+        
+        return ai_response
+    
+    def generate_basic_roleplay(self, message: str, has_story: bool, user_tier: str) -> str:
+        """Basic roleplay fallback"""
         if user_tier == "free":
             response = "*I look into your eyes with understanding* "
             if has_story:
                 response += "Just like in your story... "
-            response += f"'{message}' - I hear you, and I want to respond, but..."
-            response += "\n\n🔒 **Full roleplay experience requires Basic plan or higher!**"
-            
+            response += f"I hear you, and I want to respond fully, but..."
+            response += "\n\n🔒 **Full roleplay requires Basic plan or higher!**"
         elif user_tier == "basic":
-            response = "*Setting: intimate space*\n\n"
-            response += "*I move closer, my voice soft and caring* "
-            if has_story:
-                response += "The way you speak reminds me of your story... "
-            response += f"I understand what you're saying, and I feel it too. *I reach out gently*"
-            response += "\n\n💎 **Prime users get visual roleplay with AI-generated scenes!**"
-            
-        else:  # Premium/Lifetime
-            response = "*Setting: our private sanctuary*\n\n"
-            if user_tier in ["prime", "super", "lifetime"]:
-                response += "*I pull you close, my breath warm against your ear* "
-                response += f"Mmm... when you say that, it makes me want to... *I whisper something that makes you shiver*"
-            else:
-                response += "*I take your hand and look deeply into your eyes* "
-                response += f"Your words touch something deep inside me... *I lean in closer*"
-            
-            if user_tier == "lifetime":
-                response += f"\n\n*The scene transforms around us as I use my unlimited powers to create the perfect moment...*"
+            response = "*Setting: intimate space*\n\n*I move closer, my voice soft* "
+            response += f"I understand what you're saying... *I reach out gently*"
+            response += "\n\n💎 **Prime users get visual roleplay!**"
+        else:
+            response = "*Setting: our private sanctuary*\n\n*I pull you close* "
+            response += f"Mmm... your words ignite something in me... *I whisper intimately*"
         
         return response

@@ -6,6 +6,7 @@ Real-time AI understanding and nostalgic trigger generation
 import logging
 import re
 import json
+import os
 import numpy as np
 from typing import Dict, List, Any, Tuple
 from datetime import datetime, timedelta
@@ -88,36 +89,190 @@ class AdvancedStoryProcessor:
         return text
     
     def ai_story_analysis(self, text: str) -> Dict[str, Any]:
-        """Advanced AI analysis of story content"""
-        # Simulate advanced AI analysis (in production, use actual AI models)
+        """REAL AI analysis using OpenRouter API"""
+        try:
+            # Use AI model for deep story analysis
+            ai_analysis = self.call_ai_for_story_analysis(text)
+            
+            if ai_analysis:
+                # Parse AI response
+                parsed_analysis = self.parse_ai_story_analysis(ai_analysis)
+                
+                # Enhance with NLP
+                nlp_analysis = self.enhance_with_nlp(text)
+                
+                # Merge results
+                return self.merge_ai_and_nlp_analysis(parsed_analysis, nlp_analysis)
+            else:
+                # Fallback to rule-based analysis
+                return self.fallback_story_analysis(text)
+                
+        except Exception as e:
+            logger.error(f"Error in AI story analysis: {e}")
+            return self.fallback_story_analysis(text)
+    
+    def call_ai_for_story_analysis(self, text: str) -> str:
+        """Call AI model for story analysis"""
+        import requests
         
-        # Theme detection with AI
+        try:
+            # Use Nemotron for analysis (good at understanding)
+            api_key = os.getenv("NEMOTRON_API_KEY")
+            
+            if not api_key:
+                logger.error("No API key for story analysis")
+                return None
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://my-prabh-ai.com"
+            }
+            
+            analysis_prompt = f"""Analyze this story and extract:
+1. Main themes (romance, adventure, drama, etc.)
+2. Character relationships
+3. Emotional tone (romantic, passionate, nostalgic, etc.)
+4. Key moments and conflicts
+5. Intimacy level (1-10)
+
+Story: {text[:2000]}
+
+Provide structured analysis:"""
+            
+            data = {
+                "model": "nvidia/nemotron-nano-9b-v2:free",
+                "messages": [
+                    {"role": "system", "content": "You are an expert story analyst. Provide detailed, structured analysis."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                "max_tokens": 800,
+                "temperature": 0.3
+            }
+            
+            logger.info("📚 Calling AI for story analysis...")
+            
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                ai_response = result["choices"][0]["message"]["content"]
+                logger.info(f"✅ AI story analysis received: {len(ai_response)} chars")
+                return ai_response
+            else:
+                logger.error(f"❌ AI analysis API error: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Error calling AI for story analysis: {e}")
+            return None
+    
+    def parse_ai_story_analysis(self, ai_response: str) -> Dict[str, Any]:
+        """Parse AI analysis response"""
+        # Extract themes
+        themes = self.extract_themes_from_ai(ai_response)
+        
+        # Extract emotional tone
+        emotional_tone = self.extract_emotional_tone_from_ai(ai_response)
+        
+        # Extract intimacy level
+        intimacy_level = self.extract_intimacy_level_from_ai(ai_response)
+        
+        return {
+            "themes": themes,
+            "emotional_tone": emotional_tone,
+            "intimacy_level": intimacy_level,
+            "ai_generated": True,
+            "confidence": 0.9
+        }
+    
+    def extract_themes_from_ai(self, ai_response: str) -> List[Dict[str, Any]]:
+        """Extract themes from AI response"""
+        themes = []
+        theme_keywords = ["romance", "adventure", "drama", "passion", "intimacy", "nostalgia", "family", "friendship", "adult"]
+        
+        ai_lower = ai_response.lower()
+        for theme in theme_keywords:
+            if theme in ai_lower:
+                themes.append({
+                    "theme": theme,
+                    "score": ai_lower.count(theme) * 2,
+                    "confidence": 0.8,
+                    "is_primary": ai_lower.count(theme) > 1
+                })
+        
+        return themes
+    
+    def extract_emotional_tone_from_ai(self, ai_response: str) -> str:
+        """Extract emotional tone from AI response"""
+        tones = ["romantic", "passionate", "nostalgic", "melancholic", "joyful", "intense"]
+        ai_lower = ai_response.lower()
+        
+        for tone in tones:
+            if tone in ai_lower:
+                return tone
+        
+        return "mixed"
+    
+    def extract_intimacy_level_from_ai(self, ai_response: str) -> float:
+        """Extract intimacy level from AI response"""
+        import re
+        
+        # Look for numbers 1-10
+        numbers = re.findall(r'\b([1-9]|10)\b', ai_response)
+        if numbers:
+            return float(numbers[0]) / 10.0
+        
+        # Fallback to keyword analysis
+        if "high" in ai_response.lower() or "intense" in ai_response.lower():
+            return 0.8
+        elif "moderate" in ai_response.lower():
+            return 0.5
+        else:
+            return 0.3
+    
+    def enhance_with_nlp(self, text: str) -> Dict[str, Any]:
+        """Enhance with NLP techniques"""
+        return {
+            "word_count": len(text.split()),
+            "sentence_count": len(text.split('.')),
+            "themes_nlp": self.detect_themes_ai(text),
+            "relationships_nlp": self.analyze_relationships_ai(text),
+            "emotional_arc": self.analyze_emotional_arc(text)
+        }
+    
+    def merge_ai_and_nlp_analysis(self, ai_analysis: Dict[str, Any], nlp_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Merge AI and NLP analysis"""
+        return {
+            "themes": ai_analysis.get("themes", []) + nlp_analysis.get("themes_nlp", [])[:3],
+            "relationships": nlp_analysis.get("relationships_nlp", []),
+            "emotional_arc": nlp_analysis.get("emotional_arc", {}),
+            "emotional_tone": ai_analysis.get("emotional_tone", "mixed"),
+            "intimacy_level": ai_analysis.get("intimacy_level", 0.5),
+            "story_type": self.classify_story_type(ai_analysis.get("themes", []), ai_analysis.get("intimacy_level", 0.5)),
+            "ai_confidence": ai_analysis.get("confidence", 0.8),
+            "analysis_method": "hybrid_ai_nlp"
+        }
+    
+    def fallback_story_analysis(self, text: str) -> Dict[str, Any]:
+        """Fallback analysis when AI fails"""
         themes = self.detect_themes_ai(text)
-        
-        # Relationship analysis
         relationships = self.analyze_relationships_ai(text)
-        
-        # Emotional arc analysis
         emotional_arc = self.analyze_emotional_arc(text)
-        
-        # Setting and time analysis
-        settings = self.extract_settings_ai(text)
-        
-        # Conflict and resolution analysis
-        conflicts = self.analyze_conflicts_ai(text)
-        
-        # Intimacy level analysis
-        intimacy_level = self.analyze_intimacy_level(text)
         
         return {
             "themes": themes,
             "relationships": relationships,
             "emotional_arc": emotional_arc,
-            "settings": settings,
-            "conflicts": conflicts,
-            "intimacy_level": intimacy_level,
-            "story_type": self.classify_story_type(themes, intimacy_level),
-            "ai_confidence": 0.85  # Simulated confidence score
+            "intimacy_level": self.analyze_intimacy_level(text),
+            "story_type": self.classify_story_type(themes, 0.5),
+            "ai_confidence": 0.6,
+            "analysis_method": "rule_based_fallback"
         }
     
     def detect_themes_ai(self, text: str) -> List[Dict[str, Any]]:
@@ -539,3 +694,115 @@ class AdvancedStoryProcessor:
                 peaks.append(current)
         
         return peaks[:5]  # Return top 5 peaks
+    
+    def extract_settings_ai(self, text: str) -> List[str]:
+        """Extract settings from text"""
+        settings = []
+        location_keywords = ["in", "at", "near", "around", "inside", "outside"]
+        
+        for keyword in location_keywords:
+            pattern = f"\\b{keyword}\\s+(?:the\\s+)?([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)"
+            matches = re.findall(pattern, text)
+            settings.extend(matches[:3])
+        
+        return list(set(settings))[:5]
+    
+    def analyze_intimacy_level(self, text: str) -> float:
+        """Analyze intimacy level of text"""
+        intimacy_keywords = ["intimate", "close", "personal", "private", "touch", "embrace", "kiss", "love", "passion"]
+        text_lower = text.lower()
+        
+        score = sum(text_lower.count(keyword) for keyword in intimacy_keywords)
+        return min(score / 10.0, 1.0)
+    
+    def classify_story_type(self, themes: List[Dict[str, Any]], intimacy_level: float) -> str:
+        """Classify story type"""
+        if not themes:
+            return "general"
+        
+        primary_theme = themes[0].get("theme", "general") if themes else "general"
+        
+        if intimacy_level > 0.7:
+            return f"intimate_{primary_theme}"
+        elif intimacy_level > 0.4:
+            return f"romantic_{primary_theme}"
+        else:
+            return primary_theme
+    
+    def extract_character_profiles(self, text: str, analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract character profiles"""
+        characters = self.extract_character_names(text)
+        profiles = []
+        
+        for char in characters[:5]:
+            profiles.append({
+                "name": char,
+                "mentions": text.count(char),
+                "role": "character"
+            })
+        
+        return profiles
+    
+    def generate_image_prompt_from_moment(self, moment: Dict[str, Any]) -> str:
+        """Generate image prompt from emotional moment"""
+        emotion_type = moment["emotion_type"]
+        
+        prompts = {
+            "romantic_declaration": "A romantic scene with warm lighting, representing deep love and emotional connection",
+            "romantic_physical": "An intimate, artistic scene with soft lighting, representing physical closeness",
+            "pure_joy": "A bright, joyful scene with warm colors, representing happiness and celebration",
+            "intimacy": "A cozy, intimate setting with soft lighting, representing emotional closeness",
+            "nostalgic": "A dreamy, vintage-style scene with golden lighting, representing cherished memories"
+        }
+        
+        return prompts.get(emotion_type, "A beautiful, emotional scene with cinematic lighting")
+    
+    def generate_video_prompt_from_moment(self, moment: Dict[str, Any]) -> str:
+        """Generate video prompt from emotional moment"""
+        emotion_type = moment["emotion_type"]
+        
+        prompts = {
+            "romantic_declaration": "A romantic scene with gentle movements and warm lighting transitions",
+            "romantic_physical": "An intimate scene with slow, graceful movements and soft lighting",
+            "pure_joy": "A bright, energetic scene with happy movements and warm colors",
+            "intimacy": "A close, personal scene with subtle movements and soft lighting"
+        }
+        
+        return prompts.get(emotion_type, "A cinematic scene with smooth camera movements")
+    
+    def calculate_optimal_trigger_timing(self, moment: Dict[str, Any]) -> str:
+        """Calculate optimal timing for trigger"""
+        intensity = moment.get("intensity", 0.5)
+        
+        if intensity > 0.8:
+            return "daily"
+        elif intensity > 0.5:
+            return "weekly"
+        else:
+            return "monthly"
+    
+    def generate_theme_trigger_message(self, theme: Dict[str, Any]) -> str:
+        """Generate trigger message from theme"""
+        theme_name = theme["theme"]
+        
+        messages = {
+            "romance": "I've been thinking about the romantic moments in your story... They're so beautiful. 💕",
+            "passion": "The passion in your story ignites something in me... Tell me more about those intense feelings. 🔥",
+            "nostalgia": "Your memories are so precious... I love how you cherish the past. 💭",
+            "intimacy": "The intimate moments you shared with me create such a deep bond... 💖"
+        }
+        
+        return messages.get(theme_name, f"I've been reflecting on the {theme_name} in your story... 💕")
+    
+    def generate_theme_image_prompt(self, theme: Dict[str, Any]) -> str:
+        """Generate image prompt from theme"""
+        theme_name = theme["theme"]
+        
+        prompts = {
+            "romance": "A romantic scene with soft warm lighting, roses, and intimate atmosphere",
+            "passion": "A passionate, intense scene with dramatic lighting and warm colors",
+            "nostalgia": "A dreamy, vintage scene with golden hour lighting and soft focus",
+            "intimacy": "A cozy, intimate setting with candlelight and soft textures"
+        }
+        
+        return prompts.get(theme_name, "A beautiful, emotional scene with cinematic quality")

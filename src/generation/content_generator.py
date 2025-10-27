@@ -19,7 +19,7 @@ class ContentGenerator:
         self.user_preferences = {}
         
     def generate_image_from_memory(self, user_id: str, memory_context: Dict[str, Any], user_tier: str) -> Dict[str, Any]:
-        """Generate image based on user memory and context"""
+        """Generate REAL image using Bytez API"""
         try:
             # Check user tier permissions
             if not self.check_generation_permissions(user_id, "image", user_tier):
@@ -35,25 +35,93 @@ class ContentGenerator:
             # Select appropriate model based on content
             model_info = self.select_image_model(image_prompt, user_tier)
             
-            # Track generation
-            self.track_generation(user_id, "image", image_prompt)
+            # ACTUALLY CALL BYTEZ API
+            image_result = self.call_bytez_image_api(image_prompt, model_info)
             
-            return {
-                "success": True,
-                "prompt": image_prompt,
-                "model": model_info["model"],
-                "style": model_info["style"],
-                "estimated_time": "30-60 seconds",
-                "personalization_level": "high",
-                "memory_integrated": True
-            }
+            if image_result["success"]:
+                # Track successful generation
+                self.track_generation(user_id, "image", image_prompt)
+                
+                return {
+                    "success": True,
+                    "image_url": image_result["image_url"],
+                    "prompt": image_prompt,
+                    "model": model_info["model"],
+                    "style": model_info["style"],
+                    "generation_time": image_result.get("generation_time", "unknown"),
+                    "personalization_level": "high",
+                    "memory_integrated": True
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": image_result.get("error", "Generation failed"),
+                    "prompt": image_prompt
+                }
             
         except Exception as e:
             logger.error(f"Error generating image from memory: {e}")
             return {"success": False, "error": str(e)}
     
+    def call_bytez_image_api(self, prompt: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Call REAL Bytez API for image generation"""
+        import requests
+        import time
+        
+        try:
+            # Get API key
+            api_key = self.config.bytez_api_key_1 or self.config.bytez_api_key_2
+            
+            if not api_key:
+                logger.error("No Bytez API key configured")
+                return {"success": False, "error": "API key not configured"}
+            
+            # Bytez API endpoint
+            url = "https://api.bytez.com/v1/image/generate"
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": model_info["model"],
+                "prompt": prompt,
+                "num_images": 1,
+                "size": "1024x1024",
+                "quality": model_info.get("quality", "standard")
+            }
+            
+            logger.info(f"🎨 Calling Bytez API for image generation with model: {model_info['model']}")
+            start_time = time.time()
+            
+            response = requests.post(url, headers=headers, json=data, timeout=60)
+            generation_time = time.time() - start_time
+            
+            if response.status_code == 200:
+                result = response.json()
+                image_url = result.get("data", [{}])[0].get("url")
+                
+                if image_url:
+                    logger.info(f"✅ Image generated successfully in {generation_time:.2f}s")
+                    return {
+                        "success": True,
+                        "image_url": image_url,
+                        "generation_time": f"{generation_time:.2f}s"
+                    }
+                else:
+                    logger.error("No image URL in response")
+                    return {"success": False, "error": "No image URL returned"}
+            else:
+                logger.error(f"❌ Bytez API error: {response.status_code} - {response.text}")
+                return {"success": False, "error": f"API error: {response.status_code}"}
+                
+        except Exception as e:
+            logger.error(f"❌ Error calling Bytez API: {e}")
+            return {"success": False, "error": str(e)}
+    
     def generate_video_from_memory(self, user_id: str, memory_context: Dict[str, Any], user_tier: str) -> Dict[str, Any]:
-        """Generate video based on user memory and context"""
+        """Generate REAL video using Bytez API"""
         try:
             # Check user tier permissions
             if not self.check_generation_permissions(user_id, "video", user_tier):
@@ -69,21 +137,88 @@ class ContentGenerator:
             # Select appropriate model
             model_info = self.select_video_model(video_prompt, user_tier)
             
-            # Track generation
-            self.track_generation(user_id, "video", video_prompt)
+            # ACTUALLY CALL BYTEZ API
+            video_result = self.call_bytez_video_api(video_prompt, model_info)
             
-            return {
-                "success": True,
-                "prompt": video_prompt,
-                "model": model_info["model"],
-                "duration": model_info["duration"],
-                "estimated_time": "2-5 minutes",
-                "personalization_level": "high",
-                "memory_integrated": True
-            }
+            if video_result["success"]:
+                # Track successful generation
+                self.track_generation(user_id, "video", video_prompt)
+                
+                return {
+                    "success": True,
+                    "video_url": video_result["video_url"],
+                    "prompt": video_prompt,
+                    "model": model_info["model"],
+                    "duration": model_info["duration"],
+                    "generation_time": video_result.get("generation_time", "unknown"),
+                    "personalization_level": "high",
+                    "memory_integrated": True
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": video_result.get("error", "Generation failed"),
+                    "prompt": video_prompt
+                }
             
         except Exception as e:
             logger.error(f"Error generating video from memory: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def call_bytez_video_api(self, prompt: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Call REAL Bytez API for video generation"""
+        import requests
+        import time
+        
+        try:
+            # Get API key
+            api_key = self.config.bytez_api_key_1 or self.config.bytez_api_key_2
+            
+            if not api_key:
+                logger.error("No Bytez API key configured")
+                return {"success": False, "error": "API key not configured"}
+            
+            # Bytez API endpoint
+            url = "https://api.bytez.com/v1/video/generate"
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": model_info["model"],
+                "prompt": prompt,
+                "duration": model_info.get("duration", "5 seconds"),
+                "quality": model_info.get("quality", "standard")
+            }
+            
+            logger.info(f"🎬 Calling Bytez API for video generation with model: {model_info['model']}")
+            start_time = time.time()
+            
+            response = requests.post(url, headers=headers, json=data, timeout=120)
+            generation_time = time.time() - start_time
+            
+            if response.status_code == 200:
+                result = response.json()
+                video_url = result.get("data", {}).get("url")
+                
+                if video_url:
+                    logger.info(f"✅ Video generated successfully in {generation_time:.2f}s")
+                    return {
+                        "success": True,
+                        "video_url": video_url,
+                        "generation_time": f"{generation_time:.2f}s"
+                    }
+                else:
+                    logger.error("No video URL in response")
+                    return {"success": False, "error": "No video URL returned"}
+            else:
+                logger.error(f"❌ Bytez API error: {response.status_code} - {response.text}")
+                return {"success": False, "error": f"API error: {response.status_code}"}
+                
+        except Exception as e:
+            logger.error(f"❌ Error calling Bytez API: {e}")
             return {"success": False, "error": str(e)}
     
     def create_personalized_image_prompt(self, memory_context: Dict[str, Any], user_id: str) -> str:

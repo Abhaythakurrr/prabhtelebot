@@ -1171,5 +1171,119 @@ def api_status():
         }
     }
 
+@app.route('/api/create-order', methods=['POST'])
+def create_order():
+    """Create Razorpay order"""
+    try:
+        from src.payment.razorpay_integration import get_payment_handler
+        
+        data = request.get_json()
+        user_id = data.get('user_id')
+        plan_id = data.get('plan_id')
+        
+        if not user_id or not plan_id:
+            return jsonify({"success": False, "error": "Missing user_id or plan_id"}), 400
+        
+        payment_handler = get_payment_handler()
+        plan_details = payment_handler.get_plan_details(plan_id)
+        
+        if plan_details["price"] == 0:
+            return jsonify({"success": False, "error": "Cannot create order for free plan"}), 400
+        
+        order_result = payment_handler.create_subscription_order(
+            user_id=user_id,
+            plan_id=plan_id,
+            amount=plan_details["price"]
+        )
+        
+        if order_result["success"]:
+            return jsonify(order_result), 200
+        else:
+            return jsonify(order_result), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating order: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/verify-payment', methods=['POST'])
+def verify_payment():
+    """Verify Razorpay payment"""
+    try:
+        from src.payment.razorpay_integration import get_payment_handler
+        
+        data = request.get_json()
+        payment_id = data.get('payment_id')
+        order_id = data.get('order_id')
+        signature = data.get('signature')
+        user_id = data.get('user_id')
+        plan_id = data.get('plan_id')
+        
+        if not all([payment_id, order_id, signature, user_id, plan_id]):
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+        
+        payment_handler = get_payment_handler()
+        
+        # Verify payment
+        verify_result = payment_handler.verify_payment(payment_id, order_id, signature)
+        
+        if verify_result["success"]:
+            # Activate subscription
+            activation_result = payment_handler.activate_subscription(user_id, plan_id, payment_id)
+            
+            if activation_result["success"]:
+                return jsonify({
+                    "success": True,
+                    "message": "Payment verified and subscription activated!",
+                    "subscription": activation_result["subscription"]
+                }), 200
+            else:
+                return jsonify(activation_result), 500
+        else:
+            return jsonify(verify_result), 400
+            
+    except Exception as e:
+        logger.error(f"Error verifying payment: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/subscription-status/<user_id>', methods=['GET'])
+def subscription_status(user_id):
+    """Get user subscription status"""
+    try:
+        from src.payment.razorpay_integration import get_payment_handler
+        
+        payment_handler = get_payment_handler()
+        status = payment_handler.check_subscription_status(user_id)
+        
+        return jsonify(status), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting subscription status: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/webhook/razorpay', methods=['POST'])
+def razorpay_webhook():
+    """Handle Razorpay webhooks"""
+    try:
+        from src.payment.razorpay_integration import get_payment_handler
+        
+        payload = request.get_json()
+        signature = request.headers.get('X-Razorpay-Signature')
+        
+        if not signature:
+            return jsonify({"error": "Missing signature"}), 400
+        
+        payment_handler = get_payment_handler()
+        result = payment_handler.handle_webhook(payload, signature)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Error handling webhook: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=False)
