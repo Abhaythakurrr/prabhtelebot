@@ -282,12 +282,18 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
     def handle_callback(self, call):
         """Handle inline keyboard callbacks"""
         try:
-            self.bot.answer_callback_query(call.id)
+            logger.info(f"📞 Callback received: {call.data} from user {call.from_user.id}")
+            
+            # Answer callback query first
+            self.bot.answer_callback_query(call.id, "Processing...")
             
             user_id = str(call.from_user.id)
             data = call.data
             
+            logger.info(f"🔍 Processing callback: {data}")
+            
             if data == "upload_story":
+                logger.info("📁 Handling upload_story callback")
                 self.bot.edit_message_text(
                     "📁 **Upload Your Story File**\n\n"
                     "Send me a document file (.txt, .docx, .pdf) containing your story.\n\n"
@@ -296,8 +302,10 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
                     call.message.message_id,
                     parse_mode='Markdown'
                 )
+                logger.info("✅ upload_story callback handled")
                 
             elif data == "tell_story":
+                logger.info("💭 Handling tell_story callback")
                 if user_id not in self.user_sessions:
                     self.user_sessions[user_id] = {"stage": "collecting_story", "story_data": {}, "preferences": {}}
                 else:
@@ -312,12 +320,23 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
                     call.message.message_id,
                     parse_mode='Markdown'
                 )
+                logger.info("✅ tell_story callback handled")
                 
             elif data == "start_roleplay":
+                logger.info("🎭 Handling start_roleplay callback")
                 self.initiate_roleplay(call)
+                logger.info("✅ start_roleplay callback handled")
+            
+            else:
+                logger.warning(f"⚠️ Unknown callback data: {data}")
+                self.bot.answer_callback_query(call.id, "Unknown action")
                 
         except Exception as e:
-            logger.error(f"Error handling callback: {e}")
+            logger.error(f"❌ Error handling callback: {e}", exc_info=True)
+            try:
+                self.bot.answer_callback_query(call.id, "Error occurred, please try again")
+            except:
+                pass
     
     def process_story_input(self, message, message_text):
         """Process story input from user"""
