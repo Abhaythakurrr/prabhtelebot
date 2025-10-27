@@ -1,17 +1,17 @@
 """
 My Prabh - AI Companion Bot
-Main application entry point - Fixed for threading
+Main application entry point - Sync telebot approach
 """
 
 import logging
-from telegram.ext import Application
+import telebot
 from src.core.config import get_config
-from src.bot.telegram_bot_handler import TelegramBotHandler
+from src.bot.sync_bot_handler import SyncBotHandler
 
 logger = logging.getLogger(__name__)
 
 def run_bot():
-    """Run the Telegram bot - No async conflicts"""
+    """Run the Telegram bot - Sync telebot"""
     try:
         logger.info("Starting AI Companion Telegram Bot...")
         
@@ -20,22 +20,20 @@ def run_bot():
         if not config.telegram.token:
             raise ValueError("Telegram bot token not configured")
         
-        # Initialize bot handler
-        bot_handler = TelegramBotHandler()
+        # Create sync bot
+        bot = telebot.TeleBot(config.telegram.token)
         
-        # Create application
-        application = Application.builder().token(config.telegram.token).build()
+        # Initialize bot handler
+        bot_handler = SyncBotHandler(bot)
         
         # Register handlers
-        bot_handler.register_handlers(application)
+        bot_handler.register_handlers()
         
         logger.info("All components initialized successfully")
         
-        # Start polling
+        # Start polling - this blocks but works in threads
         logger.info("Starting Telegram bot with polling...")
-        application.run_polling(
-            allowed_updates=["message", "callback_query", "inline_query"]
-        )
+        bot.polling(none_stop=True, interval=1, timeout=20)
         
     except Exception as e:
         logger.error(f"Bot error: {e}")

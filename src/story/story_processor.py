@@ -266,3 +266,69 @@ class StoryProcessor:
                     "setting": "chat space"
                 }
             ]
+    
+    def generate_roleplay_scenarios_sync(self, story_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Sync version of roleplay scenario generation"""
+        try:
+            # Simple sync analysis
+            story_text = story_data.get("story_text", "").lower()
+            
+            scenarios = []
+            
+            # Check for themes in story
+            if any(word in story_text for word in ["love", "romantic", "heart", "kiss"]):
+                scenarios.append({
+                    "title": "💕 Romantic Evening",
+                    "preview": "A intimate dinner date with deep conversation and romantic tension...",
+                    "type": "romance"
+                })
+            
+            if any(word in story_text for word in ["adventure", "journey", "travel", "explore"]):
+                scenarios.append({
+                    "title": "🗺️ Epic Adventure",
+                    "preview": "An exciting journey filled with challenges and discoveries...",
+                    "type": "adventure"
+                })
+            
+            if any(word in story_text for word in ["drama", "conflict", "emotional", "tension"]):
+                scenarios.append({
+                    "title": "🎭 Emotional Drama",
+                    "preview": "A tense situation that tests relationships and reveals true feelings...",
+                    "type": "drama"
+                })
+            
+            # Adult scenario (premium)
+            if any(word in story_text for word in ["intimate", "passion", "desire", "adult"]):
+                scenarios.append({
+                    "title": "🔥 Intimate Moments",
+                    "preview": "A passionate encounter exploring deeper desires... (Premium Only)",
+                    "type": "adult",
+                    "premium": True
+                })
+            
+            # Default scenarios if no specific themes
+            if not scenarios:
+                scenarios = [
+                    {
+                        "title": "💬 Deep Conversation",
+                        "preview": "A meaningful chat that brings you closer together...",
+                        "type": "conversation"
+                    },
+                    {
+                        "title": "🎮 Fun Activity",
+                        "preview": "Engaging in a fun activity that reveals personality...",
+                        "type": "activity"
+                    }
+                ]
+            
+            return scenarios
+            
+        except Exception as e:
+            logger.error(f"Error generating sync roleplay scenarios: {e}")
+            return [
+                {
+                    "title": "💬 Getting to Know You",
+                    "preview": "Let's have a conversation and learn about each other...",
+                    "type": "conversation"
+                }
+            ]
