@@ -342,6 +342,49 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
                 self.initiate_roleplay(call)
                 logger.info("✅ start_roleplay callback handled")
             
+            elif data == "upload_file":
+                logger.info("📁 Handling upload_file callback")
+                self.bot.edit_message_text(
+                    "📁 **Upload Your Story File**\n\n"
+                    "Send me a document file (.txt, .docx, .pdf) containing your story.\n\n"
+                    "I'll analyze it and create personalized experiences for you! 💕",
+                    call.message.chat.id,
+                    call.message.message_id,
+                    parse_mode='Markdown'
+                )
+                logger.info("✅ upload_file callback handled")
+            
+            elif data == "tell_chat":
+                logger.info("💬 Handling tell_chat callback")
+                if user_id not in self.user_sessions:
+                    self.user_sessions[user_id] = {"stage": "collecting_story", "story_data": {}, "preferences": {}}
+                else:
+                    self.user_sessions[user_id]["stage"] = "collecting_story"
+                
+                self.bot.edit_message_text(
+                    "💭 **Tell Me Your Story**\n\n"
+                    "Start typing your story, background, or any details about yourself.\n\n"
+                    "I'll remember everything and use it to create amazing experiences!\n\n"
+                    "Type as much as you want - I'm listening! 👂💕",
+                    call.message.chat.id,
+                    call.message.message_id,
+                    parse_mode='Markdown'
+                )
+                logger.info("✅ tell_chat callback handled")
+            
+            elif data == "voice_story":
+                logger.info("🎙️ Handling voice_story callback")
+                self.bot.edit_message_text(
+                    "🎙️ **Voice Story**\n\n"
+                    "Send me a voice message with your story!\n\n"
+                    "I'll transcribe it and remember everything you tell me.\n\n"
+                    "💎 This feature is coming soon!",
+                    call.message.chat.id,
+                    call.message.message_id,
+                    parse_mode='Markdown'
+                )
+                logger.info("✅ voice_story callback handled")
+            
             elif data == "gen_image":
                 logger.info("🎨 Handling gen_image callback")
                 self.generate_image(call)

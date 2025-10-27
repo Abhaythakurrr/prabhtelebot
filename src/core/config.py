@@ -125,6 +125,19 @@ class Config:
             "api_url": os.getenv("ELEVENLABS_API_URL", "https://api.elevenlabs.io/v1")
         }
         
+        # Redis Configuration
+        self.redis = {
+            "url": os.getenv("REDIS_URL", "redis://default:kPJDA7enp7CkH2qhw4MzHjQsSGX3Ukvm@redis-15044.c212.ap-south-1-1.ec2.redns.redis-cloud.com:15044"),
+            "host": os.getenv("REDIS_HOST", "redis-15044.c212.ap-south-1-1.ec2.redns.redis-cloud.com"),
+            "port": int(os.getenv("REDIS_PORT", "15044")),
+            "password": os.getenv("REDIS_PASSWORD", "kPJDA7enp7CkH2qhw4MzHjQsSGX3Ukvm"),
+            "username": os.getenv("REDIS_USERNAME", "default"),
+            "db": int(os.getenv("REDIS_DB", "0")),
+            "max_connections": int(os.getenv("REDIS_MAX_CONNECTIONS", "10")),
+            "socket_timeout": int(os.getenv("REDIS_SOCKET_TIMEOUT", "5")),
+            "socket_connect_timeout": int(os.getenv("REDIS_SOCKET_CONNECT_TIMEOUT", "5"))
+        }
+        
         # Business Model Settings
         self.business = {
             "sexting_enabled": os.getenv("SEXTING_ENABLED", "true").lower() == "true",
