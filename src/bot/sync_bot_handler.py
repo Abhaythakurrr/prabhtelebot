@@ -644,10 +644,13 @@ Need help? Just ask me anything! 💕
         user_id = str(call.from_user.id)
         
         try:
-            self.bot.edit_message_text(
+            # Send initial message
+            status_msg = self.bot.edit_message_text(
                 "🎨 **Generating Your Image...**\n\n"
-                "Creating a beautiful scene from your story memories...\n"
-                "⏳ This may take 30-60 seconds...",
+                "⏳ Initializing AI art generator...\n"
+                "📝 Creating personalized prompt from your story...\n\n"
+                "*This may take 30-90 seconds*\n"
+                "Please wait, magic is happening! ✨",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode='Markdown'
@@ -679,21 +682,53 @@ Need help? Just ask me anything! 💕
                     caption=f"🎨 **Your Nostalgic Memory**\n\n"
                             f"Generated from your story with love 💕\n\n"
                             f"*Prompt:* {result['prompt'][:100]}...\n\n"
+                            f"⏱️ *Generation time:* {result.get('generation_time', 'N/A')}\n\n"
                             f"💎 Want more? Upgrade for unlimited generation!"
                 )
                 logger.info(f"✅ Image generated for user {user_id}")
             else:
                 error_msg = result.get('error', 'Unknown error')
-                self.bot.send_message(
-                    call.message.chat.id,
-                    f"❌ **Generation Failed**\n\n"
-                    f"Error: {error_msg}\n\n"
-                    f"💡 This might be because:\n"
-                    f"• API keys not configured\n"
-                    f"• Daily limit reached\n"
-                    f"• Service temporarily unavailable\n\n"
-                    f"Try again later or upgrade for priority access!"
-                )
+                
+                # Better error messages
+                if "401" in error_msg or "authentication" in error_msg.lower():
+                    user_message = (
+                        "⚠️ **API Authentication Issue**\n\n"
+                        "The image generation service is currently being configured.\n\n"
+                        "💡 **What's happening:**\n"
+                        "• API keys are being set up\n"
+                        "• Service will be available soon\n\n"
+                        "🔄 **Please try again in a few minutes!**\n\n"
+                        "💎 Premium users get priority access when service is live!"
+                    )
+                elif "rate limit" in error_msg.lower() or "429" in error_msg:
+                    user_message = (
+                        "⏳ **Service Busy - Request Queued**\n\n"
+                        "Many users are generating content right now!\n\n"
+                        "💡 **Your request is in queue:**\n"
+                        "• Please wait 2-3 minutes\n"
+                        "• Then try /generate again\n\n"
+                        "💎 Premium users get priority queue access!"
+                    )
+                elif "timeout" in error_msg.lower():
+                    user_message = (
+                        "⏱️ **Generation Taking Longer**\n\n"
+                        "The AI is working hard on your image!\n\n"
+                        "💡 **Please:**\n"
+                        "• Wait 1-2 minutes\n"
+                        "• Try /generate again\n\n"
+                        "💎 Premium users get faster generation!"
+                    )
+                else:
+                    user_message = (
+                        f"❌ **Generation Issue**\n\n"
+                        f"We encountered a problem: {error_msg}\n\n"
+                        f"💡 **Try:**\n"
+                        f"• Wait a moment and try again\n"
+                        f"• Use /generate to retry\n\n"
+                        f"💎 Upgrade for priority support!"
+                    )
+                
+                self.bot.send_message(call.message.chat.id, user_message)
                 logger.error(f"❌ Image generation failed: {error_msg}")
                 
         except Exception as e:
@@ -708,11 +743,14 @@ Need help? Just ask me anything! 💕
         user_id = str(call.from_user.id)
         
         try:
+            # Send initial message
             self.bot.edit_message_text(
                 "🎬 **Generating Your Video...**\n\n"
-                "Creating an animated scene from your memories...\n"
-                "⏳ This may take 2-5 minutes...\n\n"
-                "I'll notify you when it's ready! 💕",
+                "⏳ Initializing video AI...\n"
+                "🎨 Creating cinematic scene from your story...\n"
+                "🎞️ Rendering frames...\n\n"
+                "*This may take 2-5 minutes*\n"
+                "Please be patient, creating movie magic! ✨",
                 call.message.chat.id,
                 call.message.message_id,
                 parse_mode='Markdown'
@@ -743,21 +781,53 @@ Need help? Just ask me anything! 💕
                     result["video_url"],
                     caption=f"🎬 **Your Memory in Motion**\n\n"
                             f"A cinematic moment from your story 💕\n\n"
+                            f"⏱️ *Generation time:* {result.get('generation_time', 'N/A')}\n\n"
                             f"💎 Upgrade for HD videos and unlimited generation!"
                 )
                 logger.info(f"✅ Video generated for user {user_id}")
             else:
                 error_msg = result.get('error', 'Unknown error')
-                self.bot.send_message(
-                    call.message.chat.id,
-                    f"❌ **Video Generation Failed**\n\n"
-                    f"Error: {error_msg}\n\n"
-                    f"💡 Video generation requires:\n"
-                    f"• API keys configured\n"
-                    f"• Premium subscription (for best quality)\n"
-                    f"• Sufficient credits\n\n"
-                    f"Upgrade to unlock video generation!"
-                )
+                
+                # Better error messages
+                if "401" in error_msg or "authentication" in error_msg.lower():
+                    user_message = (
+                        "⚠️ **API Authentication Issue**\n\n"
+                        "The video generation service is currently being configured.\n\n"
+                        "💡 **What's happening:**\n"
+                        "• API keys are being set up\n"
+                        "• Service will be available soon\n\n"
+                        "🔄 **Please try again in a few minutes!**\n\n"
+                        "💎 Premium users get priority access!"
+                    )
+                elif "rate limit" in error_msg.lower() or "429" in error_msg:
+                    user_message = (
+                        "⏳ **Service Busy - Request Queued**\n\n"
+                        "Video generation is in high demand!\n\n"
+                        "💡 **Your request is queued:**\n"
+                        "• Please wait 5-10 minutes\n"
+                        "• Then try /generate again\n\n"
+                        "💎 Premium users skip the queue!"
+                    )
+                elif "timeout" in error_msg.lower():
+                    user_message = (
+                        "⏱️ **Video Taking Longer**\n\n"
+                        "Video generation is complex and takes time!\n\n"
+                        "💡 **Please:**\n"
+                        "• Wait 3-5 minutes\n"
+                        "• Try /generate again\n\n"
+                        "💎 Premium users get faster processing!"
+                    )
+                else:
+                    user_message = (
+                        f"❌ **Video Generation Issue**\n\n"
+                        f"We encountered a problem: {error_msg}\n\n"
+                        f"💡 **Try:**\n"
+                        f"• Wait a few minutes and retry\n"
+                        f"• Use /generate to try again\n\n"
+                        f"💎 Upgrade for priority support!"
+                    )
+                
+                self.bot.send_message(call.message.chat.id, user_message)
                 logger.error(f"❌ Video generation failed: {error_msg}")
                 
         except Exception as e:
