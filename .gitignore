@@ -1,0 +1,146 @@
+# Environment variables and secrets - CRITICAL SECURITY
+.env
+.env.*
+.env.local
+.env.production
+.env.railway
+*.env
+*env*
+
+# API Keys and sensitive data - CRITICAL SECURITY
+config/secrets.json
+secrets/
+keys/
+*api_key*
+*API_KEY*
+*token*
+*TOKEN*
+*secret*
+*SECRET*
+*password*
+*PASSWORD*
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+auth.json
+config.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+ai_companion.db
+user_data.json
+
+# Logs
+*.log
+logs/
+ai_companion.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup files
+*.bak
+*.backup
+
+# Test files and generated content
+test_*.py
+*_test.py
+test_*.mp4
+test_*.png
+test_*.jpg
+test_*.jpeg
+test_*.gif
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Generated images and videos
+explicit_*.png
+explicit_*.mp4
+adult_*.png
+anime_*.png
+realistic_*.png
+passionate_*.png
+quality_test_*.png
+4k_quality_*.png
+ultra_explicit_*.png
+cam_finetune_*.png
+*_20251026_*.png
+*_20251026_*.mp4
+*_20251027_*.png
+*_20251027_*.mp4
+
+# API testing and discovery scripts
+api_status_report.py
+compare_models_quality.py
+discover_video_models.py
+final_api_status_*.py
+download_bytez_videos.py
+
+# Development files
+DEPLOYMENT_READY.md
+ULTIMATE_AI_COMPANION_STRATEGY.md
+RAILWAY_ENV_TEMPLATE.txt
+QUICK_FIX_ENV.txt
+RAILWAY_ENV_VARIABLES.txt
