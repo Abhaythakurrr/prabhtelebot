@@ -4,6 +4,7 @@ Content Generator - Advanced content generation with memory integration
 
 import logging
 import random
+import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from src.core.config import get_config
@@ -95,35 +96,60 @@ class ContentGenerator:
                 
                 # Get model
                 model_name = model_info["model"]
+                logger.info(f"🎨 Using model: {model_name}")
                 model = sdk.model(model_name)
                 
-                # Run generation
-                output, error = model.run(prompt)
-                generation_time = time.time() - start_time
-                
-                if error:
-                    logger.error(f"❌ Bytez SDK error (attempt {attempt + 1}): {error}")
+                # Run generation - SDK returns (output, error) tuple
+                try:
+                    result = model.run(prompt)
+                    generation_time = time.time() - start_time
+                    
+                    # Handle different return formats
+                    if isinstance(result, tuple):
+                        output, error = result
+                    else:
+                        output = result
+                        error = None
+                    
+                    if error:
+                        logger.error(f"❌ Bytez SDK error (attempt {attempt + 1}): {error}")
+                        if attempt < max_retries - 1:
+                            logger.info(f"⏳ Retrying in {retry_delay}s...")
+                            time.sleep(retry_delay)
+                            continue
+                        return {"success": False, "error": str(error)}
+                    
+                    if output:
+                        # Output can be URL, base64, or dict
+                        if isinstance(output, dict):
+                            image_url = output.get('url') or output.get('image') or str(output)
+                        else:
+                            image_url = str(output)
+                        
+                        logger.info(f"✅ Image generated successfully in {generation_time:.2f}s")
+                        logger.info(f"📸 Image URL: {image_url[:100]}...")
+                        
+                        return {
+                            "success": True,
+                            "image_url": image_url,
+                            "generation_time": f"{generation_time:.2f}s"
+                        }
+                    else:
+                        logger.error("No output from Bytez SDK")
+                        if attempt < max_retries - 1:
+                            logger.info(f"⏳ Retrying in {retry_delay}s...")
+                            time.sleep(retry_delay)
+                            continue
+                        return {"success": False, "error": "No output returned"}
+                        
+                except json.JSONDecodeError as je:
+                    logger.error(f"❌ JSON decode error (attempt {attempt + 1}): {je}")
+                    logger.error(f"This usually means the model returned non-JSON data")
                     if attempt < max_retries - 1:
-                        logger.info(f"⏳ Retrying in {retry_delay}s...")
+                        logger.info(f"⏳ Retrying with different model...")
                         time.sleep(retry_delay)
                         continue
-                    return {"success": False, "error": str(error)}
-                
-                if output:
-                    # Output is the image URL or base64
-                    logger.info(f"✅ Image generated successfully in {generation_time:.2f}s")
-                    return {
-                        "success": True,
-                        "image_url": output,
-                        "generation_time": f"{generation_time:.2f}s"
-                    }
-                else:
-                    logger.error("No output from Bytez SDK")
-                    if attempt < max_retries - 1:
-                        logger.info(f"⏳ Retrying in {retry_delay}s...")
-                        time.sleep(retry_delay)
-                        continue
-                    return {"success": False, "error": "No output returned"}
+                    return {"success": False, "error": "Model returned invalid format. Try a different model."}
                     
             except Exception as e:
                 logger.error(f"❌ Error with Bytez SDK (attempt {attempt + 1}): {e}")
@@ -210,35 +236,60 @@ class ContentGenerator:
                 
                 # Get model
                 model_name = model_info["model"]
+                logger.info(f"🎬 Using model: {model_name}")
                 model = sdk.model(model_name)
                 
                 # Run generation
-                output, error = model.run(prompt)
-                generation_time = time.time() - start_time
-                
-                if error:
-                    logger.error(f"❌ Bytez SDK error (attempt {attempt + 1}): {error}")
+                try:
+                    result = model.run(prompt)
+                    generation_time = time.time() - start_time
+                    
+                    # Handle different return formats
+                    if isinstance(result, tuple):
+                        output, error = result
+                    else:
+                        output = result
+                        error = None
+                    
+                    if error:
+                        logger.error(f"❌ Bytez SDK error (attempt {attempt + 1}): {error}")
+                        if attempt < max_retries - 1:
+                            logger.info(f"⏳ Retrying in {retry_delay}s...")
+                            time.sleep(retry_delay)
+                            continue
+                        return {"success": False, "error": str(error)}
+                    
+                    if output:
+                        # Output can be URL, base64, or dict
+                        if isinstance(output, dict):
+                            video_url = output.get('url') or output.get('video') or str(output)
+                        else:
+                            video_url = str(output)
+                        
+                        logger.info(f"✅ Video generated successfully in {generation_time:.2f}s")
+                        logger.info(f"🎬 Video URL: {video_url[:100]}...")
+                        
+                        return {
+                            "success": True,
+                            "video_url": video_url,
+                            "generation_time": f"{generation_time:.2f}s"
+                        }
+                    else:
+                        logger.error("No output from Bytez SDK")
+                        if attempt < max_retries - 1:
+                            logger.info(f"⏳ Retrying in {retry_delay}s...")
+                            time.sleep(retry_delay)
+                            continue
+                        return {"success": False, "error": "No output returned"}
+                        
+                except json.JSONDecodeError as je:
+                    logger.error(f"❌ JSON decode error (attempt {attempt + 1}): {je}")
+                    logger.error(f"This usually means the model returned non-JSON data")
                     if attempt < max_retries - 1:
-                        logger.info(f"⏳ Retrying in {retry_delay}s...")
+                        logger.info(f"⏳ Retrying with different model...")
                         time.sleep(retry_delay)
                         continue
-                    return {"success": False, "error": str(error)}
-                
-                if output:
-                    # Output is the video URL
-                    logger.info(f"✅ Video generated successfully in {generation_time:.2f}s")
-                    return {
-                        "success": True,
-                        "video_url": output,
-                        "generation_time": f"{generation_time:.2f}s"
-                    }
-                else:
-                    logger.error("No output from Bytez SDK")
-                    if attempt < max_retries - 1:
-                        logger.info(f"⏳ Retrying in {retry_delay}s...")
-                        time.sleep(retry_delay)
-                        continue
-                    return {"success": False, "error": "No output returned"}
+                    return {"success": False, "error": "Model returned invalid format. Try a different model."}
                     
             except Exception as e:
                 logger.error(f"❌ Error with Bytez SDK (attempt {attempt + 1}): {e}")
