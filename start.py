@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
 My Prabh - AI Companion Bot
-Production Entry Point
+Production Entry Point - Fixed Event Loop
 """
 
-import asyncio
 import logging
 import os
 import threading
 import time
-from src.main import main as bot_main
+from src.main import run_bot
 from website.app import app
 
 # Configure logging
@@ -24,21 +23,20 @@ def run_website():
     try:
         logger.info("🌐 Starting Flask website...")
         port = int(os.environ.get('PORT', 8000))
-        app.run(host='0.0.0.0', port=port, debug=False)
+        app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
     except Exception as e:
         logger.error(f"❌ Website error: {e}")
 
-async def start_bot():
-    """Start the Telegram bot"""
+def start_bot():
+    """Start the Telegram bot in separate thread"""
     try:
         logger.info("🤖 Starting Telegram bot...")
-        await bot_main()
+        run_bot()
     except Exception as e:
         logger.error(f"❌ Bot startup failed: {e}")
-        logger.error(f"Traceback: {e}", exc_info=True)
 
-async def main():
-    """Main application entry point"""
+def main():
+    """Main application entry point - No asyncio conflicts"""
     logger.info("🚀 AI Companion Platform - Railway Deployment")
     logger.info("============================================================")
     logger.info(f"🌍 Environment: {os.getenv('RAILWAY_ENVIRONMENT', 'development')}")
@@ -75,29 +73,36 @@ async def main():
     
     # Wait for website to initialize
     logger.info("⏳ Waiting for website to initialize...")
-    await asyncio.sleep(5)
+    time.sleep(3)
     
     if website_thread.is_alive():
         logger.info("✅ Website thread is running")
     else:
         logger.warning("⚠️ Website thread may have issues")
     
-    # Start Telegram bot
+    # Start Telegram bot in separate thread
     logger.info("🤖 Launching Telegram bot...")
-    await start_bot()
+    bot_thread = threading.Thread(target=start_bot, daemon=True)
+    bot_thread.start()
     
-    logger.info("🌐 Bot finished, keeping website alive...")
+    logger.info("🌐 Both services running, keeping alive...")
     
     # Keep the application running
     try:
         while True:
-            await asyncio.sleep(60)
+            time.sleep(60)
             if not website_thread.is_alive():
                 logger.warning("⚠️ Website thread died, restarting...")
                 website_thread = threading.Thread(target=run_website, daemon=True)
                 website_thread.start()
+            
+            if not bot_thread.is_alive():
+                logger.warning("⚠️ Bot thread died, restarting...")
+                bot_thread = threading.Thread(target=start_bot, daemon=True)
+                bot_thread.start()
+                
     except KeyboardInterrupt:
         logger.info("👋 Shutting down gracefully...")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
