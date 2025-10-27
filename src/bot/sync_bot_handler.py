@@ -99,23 +99,23 @@ class SyncBotHandler:
         )
         
         welcome_message = f"""
-🌟 **Welcome to My Prabh - Your AI Companion!** 🌟
+🌟 **Welcome to My Prabh AI** 🌟
 
-Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningful connections through your stories.
+Hi {user.first_name}! I'm your personal AI companion with perfect memory.
 
-**🎯 How it works:**
-1️⃣ **Share your story** (upload file or tell me)
-2️⃣ **I analyze & remember** everything about you
-3️⃣ **We create roleplay scenarios** together
-4️⃣ **Unlock premium features** on our website
+**✨ What I Do:**
+💕 Remember everything you tell me
+🎭 Create personalized roleplay scenarios
+🎨 Generate images & videos from your memories
+🗣️ Speak to you with AI voice
 
-**💕 What makes me special:**
-• 🧠 **Perfect Memory** - I remember every detail
-• 🎭 **Roleplay Master** - Create any scenario
-• 🎨 **Visual Storytelling** - Generate images & videos
-• 🔥 **Adult Content** - For mature relationships (Premium)
+**🚀 Quick Start:**
+1. Share your story → I'll remember forever
+2. Chat with me → I learn about you
+3. Try roleplay → Based on your memories
+4. Generate content → Images, videos, voice
 
-**Choose how you'd like to begin:**
+**Choose below to begin:**
         """
         
         self.bot.send_message(message.chat.id, welcome_message, reply_markup=markup, parse_mode='Markdown')
@@ -659,36 +659,39 @@ Hi {user.first_name}! I'm your personal AI companion who creates deep, meaningfu
     def handle_help_command(self, message):
         """Handle /help command"""
         help_text = """
-🤖 **My Prabh AI Companion - Commands**
+🤖 **My Prabh AI - Quick Guide**
 
-**📚 Story & Memory**
-/start - Welcome and get started
-/story - Upload your story
-/roleplay - Start roleplay mode
+**📚 Core Commands**
+/start - Welcome & quick start
+/story - Share your story with me
+/roleplay - Start roleplay scenarios
+/generate - Create images, videos, voice
+/plans - View subscription plans
+/help - Show this guide
 
-**🎨 Content Generation**
-/generate - Create images, videos, music
-/voice - Voice messages and cloning
+**💬 How to Use**
+Just chat with me! I'll remember everything and respond with AI.
 
-**💎 Subscription**
-/plans - View pricing and features
+**🎭 Roleplay**
+Share your story first, then I'll create personalized scenarios based on your memories.
 
-**💬 Chat**
-Just send me a message and I'll respond with AI!
+**🎨 Generation**
+Use /generate to create:
+• 🖼️ Images from your memories
+• 🎬 Videos of special moments
+• 🎙️ Voice messages
+• 🎵 Music (coming soon)
 
-**🎭 Roleplay Mode**
-After uploading your story, I can roleplay scenarios based on your memories.
-
-**🔥 Premium Features**
-• Unlimited image/video generation
-• Voice cloning
+**💎 Premium Benefits**
+• Unlimited generation
 • NSFW content
-• Proactive messaging
+• Voice cloning
 • Priority responses
+• Proactive messages
 
-Visit our website for more: https://web-production-43fe3.up.railway.app
+**🌐 Website:** https://web-production-43fe3.up.railway.app
 
-Need help? Just ask me anything! 💕
+Questions? Just ask me! 💕
         """
         
         self.bot.send_message(message.chat.id, help_text, parse_mode='Markdown')
