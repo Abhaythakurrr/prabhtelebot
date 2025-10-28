@@ -34,3 +34,12 @@ razorpay==1.4.1
 python-dotenv==1.0.0
 pydantic>=2.7.4,<3.0.0
 Pillow>=10.2.0
+
+# Real-time Communication
+redis==5.0.1
+flask-socketio==5.3.5
+python-socketio==5.10.0
+eventlet==0.33.3
+
+# Task Queue
+celery==5.3.4
