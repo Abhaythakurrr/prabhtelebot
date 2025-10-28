@@ -1,1 +1,1 @@
-# Bot modules
+"""Bot modules"""
