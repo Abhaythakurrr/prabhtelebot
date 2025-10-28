@@ -6,6 +6,9 @@
 .env.railway
 *.env
 *env*
+RAILWAY_ENV_PASTE_THIS.txt
+*RAILWAY_ENV*
+*_PASTE_THIS*
 
 # API Keys and sensitive data - CRITICAL SECURITY
 config/secrets.json
