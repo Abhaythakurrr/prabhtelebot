@@ -8,6 +8,11 @@ import logging
 import os
 import threading
 import time
+from dotenv import load_dotenv
+
+# Load environment variables FIRST
+load_dotenv()
+
 from src.main import run_bot
 from website.app import app
 
