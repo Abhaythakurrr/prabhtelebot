@@ -388,133 +388,537 @@ def dashboard():
 
 @app.route('/pricing')
 def pricing():
-    """Detailed pricing page"""
+    """Modern cyberpunk pricing page with Razorpay integration"""
     return render_template_string("""
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Pricing - My Prabh AI Companion</title>
         <style>
-            body { font-family: Arial, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; min-height: 100vh; }
-            .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-            .pricing-header { text-align: center; padding: 40px 0; }
-            .comparison-table { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 30px; margin: 40px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 15px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); }
-            th { background: rgba(255,255,255,0.2); font-weight: bold; }
-            .feature-yes { color: #4CAF50; font-weight: bold; }
-            .feature-no { color: #f44336; }
-            .feature-limited { color: #FF9800; }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: #0a0a0f;
+                color: #ffffff;
+                line-height: 1.6;
+                overflow-x: hidden;
+            }
+            /* Cyberpunk Background */
+            .bg-animation {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(45deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+                z-index: -2;
+            }
+            .bg-animation::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: 
+                    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                    radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+                animation: pulse 4s ease-in-out infinite alternate;
+            }
+            @keyframes pulse {
+                0% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 0 20px;
+                position: relative;
+                z-index: 1;
+            }
+            /* Header */
+            .header {
+                text-align: center;
+                padding: 80px 0 60px;
+            }
+            .header h1 {
+                font-size: clamp(2.5rem, 5vw, 4rem);
+                font-weight: 800;
+                background: linear-gradient(135deg, #00f0ff 0%, #ff00ff 50%, #ffff00 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 20px;
+                text-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+            }
+            .header p {
+                font-size: 1.3rem;
+                color: #a0a0b0;
+                max-width: 600px;
+                margin: 0 auto;
+            }
+            /* Pricing Grid */
+            .pricing-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 30px;
+                margin: 60px 0;
+            }
+            .pricing-card {
+                background: rgba(20, 20, 30, 0.8);
+                border: 1px solid rgba(0, 240, 255, 0.2);
+                border-radius: 20px;
+                padding: 40px 30px;
+                text-align: center;
+                backdrop-filter: blur(20px);
+                position: relative;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                overflow: hidden;
+            }
+            .pricing-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%);
+                opacity: 0;
+                transition: opacity 0.4s ease;
+            }
+            .pricing-card:hover {
+                transform: translateY(-10px) scale(1.02);
+                border-color: rgba(0, 240, 255, 0.6);
+                box-shadow: 
+                    0 20px 40px rgba(0, 240, 255, 0.2),
+                    0 0 60px rgba(0, 240, 255, 0.1);
+            }
+            .pricing-card:hover::before {
+                opacity: 1;
+            }
+            .popular {
+                border: 2px solid #ff00ff;
+                transform: scale(1.05);
+                box-shadow: 0 0 40px rgba(255, 0, 255, 0.3);
+            }
+            .popular::after {
+                content: "🔥 MOST POPULAR";
+                position: absolute;
+                top: -15px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #ff00ff, #ff6b6b);
+                color: white;
+                padding: 8px 20px;
+                border-radius: 20px;
+                font-weight: 700;
+                font-size: 0.8rem;
+                box-shadow: 0 4px 15px rgba(255, 0, 255, 0.4);
+            }
+            .plan-name {
+                font-size: 1.8rem;
+                font-weight: 700;
+                margin-bottom: 15px;
+                color: #ffffff;
+            }
+            .plan-price {
+                font-size: 3.5rem;
+                font-weight: 800;
+                margin: 25px 0;
+                background: linear-gradient(135deg, #00f0ff, #ff00ff);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .plan-price small {
+                font-size: 1.2rem;
+                color: #a0a0b0;
+                font-weight: 400;
+            }
+            .plan-features {
+                list-style: none;
+                margin: 30px 0;
+                text-align: left;
+            }
+            .plan-features li {
+                padding: 12px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                font-size: 1rem;
+                display: flex;
+                align-items: center;
+            }
+            .plan-features li:last-child {
+                border-bottom: none;
+            }
+            .plan-features li::before {
+                content: '✨';
+                margin-right: 10px;
+                font-size: 1.2rem;
+            }
+            .cta-button {
+                background: linear-gradient(135deg, #00f0ff 0%, #ff00ff 100%);
+                color: white;
+                border: none;
+                padding: 18px 40px;
+                border-radius: 50px;
+                font-size: 1.1rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                width: 100%;
+                margin-top: 25px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                position: relative;
+                overflow: hidden;
+            }
+            .cta-button::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.5s;
+            }
+            .cta-button:hover::before {
+                left: 100%;
+            }
+            .cta-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 30px rgba(0, 240, 255, 0.4);
+            }
+            /* Features Section */
+            .features-section {
+                margin: 100px 0;
+                text-align: center;
+            }
+            .features-section h2 {
+                font-size: 3rem;
+                font-weight: 800;
+                margin-bottom: 60px;
+                background: linear-gradient(135deg, #00f0ff, #ff00ff);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 40px;
+                margin: 60px 0;
+            }
+            .feature-card {
+                background: rgba(20, 20, 30, 0.6);
+                border: 1px solid rgba(0, 240, 255, 0.2);
+                border-radius: 20px;
+                padding: 40px 30px;
+                backdrop-filter: blur(20px);
+                transition: all 0.3s ease;
+            }
+            .feature-card:hover {
+                transform: translateY(-5px);
+                border-color: rgba(0, 240, 255, 0.5);
+                box-shadow: 0 15px 30px rgba(0, 240, 255, 0.2);
+            }
+            .feature-icon {
+                font-size: 4rem;
+                margin-bottom: 25px;
+                display: block;
+            }
+            .feature-card h3 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin-bottom: 15px;
+                color: #ffffff;
+            }
+            .feature-card p {
+                color: #a0a0b0;
+                font-size: 1rem;
+                line-height: 1.6;
+            }
+            /* Responsive */
+            @media (max-width: 768px) {
+                .pricing-grid {
+                    grid-template-columns: 1fr;
+                    gap: 20px;
+                }
+                .popular {
+                    transform: none;
+                }
+                .header {
+                    padding: 40px 0 30px;
+                }
+                .pricing-card {
+                    padding: 30px 20px;
+                }
+            }
+            /* Loading Animation */
+            .loading {
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+                background: rgba(0, 0, 0, 0.9);
+                padding: 30px;
+                border-radius: 15px;
+                text-align: center;
+            }
+            .spinner {
+                width: 40px;
+                height: 40px;
+                border: 4px solid rgba(0, 240, 255, 0.3);
+                border-top: 4px solid #00f0ff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
         </style>
     </head>
     <body>
+        <div class="bg-animation"></div>
         <div class="container">
-            <div class="pricing-header">
-                <h1>💎 Choose Your AI Companion Experience</h1>
-                <p>Transparent pricing with no hidden fees. Upgrade or downgrade anytime.</p>
+            <div class="header">
+                <h1>💎 Choose Your Plan</h1>
+                <p>Unlock the full potential of your AI companion with cutting-edge features</p>
             </div>
-            
-            <div class="comparison-table">
-                <table>
-                    <tr>
-                        <th>Features</th>
-                        <th>🆓 FREE</th>
-                        <th>💎 BASIC<br>₹299/mo</th>
-                        <th>🔥 PRO<br>₹599/mo</th>
-                        <th>👑 PRIME<br>₹899/mo</th>
-                        <th>🌟 SUPER<br>₹1299/mo</th>
-                        <th>♾️ LIFETIME<br>₹2999 once</th>
-                    </tr>
-                    <tr>
-                        <td><strong>Story Upload & Analysis</strong></td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Daily Messages</strong></td>
-                        <td class="feature-limited">10/day</td>
-                        <td class="feature-yes">Unlimited</td>
-                        <td class="feature-yes">Unlimited</td>
-                        <td class="feature-yes">Unlimited</td>
-                        <td class="feature-yes">Unlimited</td>
-                        <td class="feature-yes">Unlimited</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Image Generation</strong></td>
-                        <td class="feature-limited">1/month</td>
-                        <td class="feature-limited">50/month</td>
-                        <td class="feature-limited">200/month</td>
-                        <td class="feature-limited">500/month</td>
-                        <td class="feature-yes">Unlimited</td>
-                        <td class="feature-yes">Unlimited</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Voice Cloning</strong></td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Video Generation</strong></td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-limited">5/month</td>
-                        <td class="feature-limited">20/month</td>
-                        <td class="feature-limited">50/month</td>
-                        <td class="feature-yes">Unlimited</td>
-                        <td class="feature-yes">Unlimited</td>
-                    </tr>
-                    <tr>
-                        <td><strong>NSFW Content</strong></td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-limited">Limited</td>
-                        <td class="feature-yes">Full Access</td>
-                        <td class="feature-yes">Full Access</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Proactive Messaging</strong></td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                        <td class="feature-yes">✅</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Priority Queue</strong></td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-limited">Medium</td>
-                        <td class="feature-yes">High</td>
-                        <td class="feature-yes">Highest</td>
-                        <td class="feature-yes">Instant</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Music Generation</strong></td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-no">❌</td>
-                        <td class="feature-limited">Basic</td>
-                        <td class="feature-limited">Advanced</td>
-                        <td class="feature-yes">Full</td>
-                        <td class="feature-yes">Full</td>
-                    </tr>
-                </table>
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div class="plan-name">🆓 FREE</div>
+                    <div class="plan-price">₹0<small>/forever</small></div>
+                    <ul class="plan-features">
+                        <li>10 messages per day</li>
+                        <li>1 image per month</li>
+                        <li>Basic AI responses</li>
+                        <li>Story upload & analysis</li>
+                    </ul>
+                    <button class="cta-button" onclick="window.open('https://t.me/kanuji_bot', '_blank')">
+                        Start Free
+                    </button>
+                </div>
+                <!-- Basic Plan -->
+                <div class="pricing-card">
+                    <div class="plan-name">💎 BASIC</div>
+                    <div class="plan-price">₹299<small>/month</small></div>
+                    <ul class="plan-features">
+                        <li>Unlimited messages</li>
+                        <li>50 images per month</li>
+                        <li>5 videos per month</li>
+                        <li>Voice cloning</li>
+                        <li>Better AI models</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <button class="cta-button" onclick="buyPlan('basic', 299)">
+                        Subscribe Now
+                    </button>
+                </div>
+                <!-- Pro Plan -->
+                <div class="pricing-card">
+                    <div class="plan-name">🔥 PRO</div>
+                    <div class="plan-price">₹599<small>/month</small></div>
+                    <ul class="plan-features">
+                        <li>Everything in Basic</li>
+                        <li>200 images per month</li>
+                        <li>20 videos per month</li>
+                        <li>Advanced AI models</li>
+                        <li>Custom voice training</li>
+                        <li>Roleplay scenarios</li>
+                    </ul>
+                    <button class="cta-button" onclick="buyPlan('pro', 599)">
+                        Subscribe Now
+                    </button>
+                </div>
+                <!-- Prime Plan (Popular) -->
+                <div class="pricing-card popular">
+                    <div class="plan-name">👑 PRIME</div>
+                    <div class="plan-price">₹899<small>/month</small></div>
+                    <ul class="plan-features">
+                        <li>Everything in Pro</li>
+                        <li>500 images per month</li>
+                        <li>50 videos per month</li>
+                        <li>Limited NSFW content</li>
+                        <li>Proactive messaging</li>
+                        <li>Premium AI models</li>
+                    </ul>
+                    <button class="cta-button" onclick="buyPlan('prime', 899)">
+                        Subscribe Now
+                    </button>
+                </div>
+                <!-- Super Plan -->
+                <div class="pricing-card">
+                    <div class="plan-name">🚀 SUPER</div>
+                    <div class="plan-price">₹1299<small>/month</small></div>
+                    <ul class="plan-features">
+                        <li>Unlimited everything</li>
+                        <li>Full NSFW access</li>
+                        <li>Best AI models</li>
+                        <li>Priority queue</li>
+                        <li>Custom features</li>
+                        <li>24/7 support</li>
+                    </ul>
+                    <button class="cta-button" onclick="buyPlan('super', 1299)">
+                        Subscribe Now
+                    </button>
+                </div>
+                <!-- Lifetime Plan -->
+                <div class="pricing-card">
+                    <div class="plan-name">♾️ LIFETIME</div>
+                    <div class="plan-price">₹2999<small> once</small></div>
+                    <ul class="plan-features">
+                        <li>All features forever</li>
+                        <li>Unlimited generation</li>
+                        <li>Full NSFW access</li>
+                        <li>Best AI models</li>
+                        <li>All future updates</li>
+                        <li>VIP support</li>
+                    </ul>
+                    <button class="cta-button" onclick="buyPlan('lifetime', 2999)">
+                        Buy Lifetime Access
+                    </button>
+                </div>
             </div>
-            
-            <div style="text-align: center; padding: 40px 0;">
-                <h2>🚀 Ready to Upgrade Your AI Experience?</h2>
-                <p>Start with our free trial and upgrade when you're ready for more features!</p>
-                <a href="https://t.me/kanuji_bot" style="display: inline-block; padding: 15px 30px; background: linear-gradient(45deg, #FF6B6B, #FF8E53); color: white; text-decoration: none; border-radius: 25px; font-weight: bold; margin: 10px;">Start Free Trial</a>
+            <div class="features-section">
+                <h2>✨ What Makes Us Special</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🧠</div>
+                        <h3>Perfect Memory</h3>
+                        <p>I remember every conversation, every story, every detail about you forever.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎭</div>
+                        <h3>Immersive Roleplay</h3>
+                        <p>Create personalized scenarios based on your memories and fantasies.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <h3>Visual Storytelling</h3>
+                        <p>Generate images and videos from your memories and conversations.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🗣️</div>
+                        <h3>Voice Cloning</h3>
+                        <p>I can speak in your voice or create custom voices for roleplay.</p>
+                    </div>
+                </div>
             </div>
         </div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing payment...</p>
+        </div>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        <script>
+            function showLoading() {
+                document.getElementById('loading').style.display = 'block';
+            }
+            function hideLoading() {
+                document.getElementById('loading').style.display = 'none';
+            }
+            function buyPlan(planId, amount) {
+                const userId = prompt("Enter your Telegram User ID\\n\\n(Send /start to @kanuji_bot to find your ID):");
+                if (!userId || userId.trim() === '') {
+                    alert("❌ User ID is required to proceed with payment");
+                    return;
+                }
+                showLoading();
+                fetch('/api/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId.trim(),
+                        plan_id: planId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        var options = {
+                            key: data.key_id,
+                            amount: data.amount * 100,
+                            currency: 'INR',
+                            name: 'My Prabh AI',
+                            description: planId.toUpperCase() + ' Plan Subscription',
+                            order_id: data.order_id,
+                            handler: function (response) {
+                                showLoading();
+                                verifyPayment(response, userId.trim(), planId);
+                            },
+                            prefill: {
+                                name: '',
+                                email: '',
+                                contact: ''
+                            },
+                            theme: {
+                                color: '#00f0ff'
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    hideLoading();
+                                }
+                            }
+                        };
+                        var rzp = new Razorpay(options);
+                        rzp.open();
+                    } else {
+                        alert('❌ Error creating order: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Error:', error);
+                    alert('❌ Failed to create order. Please try again.');
+                });
+            }
+            function verifyPayment(response, userId, planId) {
+                fetch('/api/verify-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        payment_id: response.razorpay_payment_id,
+                        order_id: response.razorpay_order_id,
+                        signature: response.razorpay_signature,
+                        user_id: userId,
+                        plan_id: planId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        alert('🎉 Payment successful! Your subscription is now active.\\n\\nCheck your Telegram bot for premium features!');
+                        window.location.href = '/payment-success';
+                    } else {
+                        alert('❌ Payment verification failed: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Error:', error);
+                    alert('❌ Payment verification failed. Please contact support.');
+                });
+            }
+        </script>
     </body>
     </html>
     """)
@@ -1283,6 +1687,120 @@ def razorpay_webhook():
     except Exception as e:
         logger.error(f"Error handling webhook: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/payment-success')
+def payment_success():
+    """Payment success page"""
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Successful - My Prabh AI</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+                color: #ffffff;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .success-container {
+                max-width: 600px;
+                background: rgba(20, 20, 30, 0.8);
+                border: 2px solid rgba(0, 240, 255, 0.3);
+                border-radius: 30px;
+                padding: 60px 40px;
+                text-align: center;
+                backdrop-filter: blur(20px);
+                box-shadow: 0 20px 60px rgba(0, 240, 255, 0.2);
+            }
+            .success-icon {
+                font-size: 6rem;
+                margin-bottom: 30px;
+                animation: bounce 1s ease-in-out;
+            }
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-20px); }
+            }
+            h1 {
+                font-size: 2.5rem;
+                background: linear-gradient(135deg, #00f0ff, #ff00ff);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 20px;
+            }
+            p {
+                font-size: 1.2rem;
+                color: #a0a0b0;
+                margin-bottom: 40px;
+                line-height: 1.6;
+            }
+            .cta-button {
+                display: inline-block;
+                background: linear-gradient(135deg, #00f0ff, #ff00ff);
+                color: white;
+                padding: 18px 40px;
+                border-radius: 50px;
+                text-decoration: none;
+                font-weight: 700;
+                font-size: 1.1rem;
+                transition: all 0.3s ease;
+                margin: 10px;
+            }
+            .cta-button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 30px rgba(0, 240, 255, 0.4);
+            }
+            .features-list {
+                text-align: left;
+                margin: 30px 0;
+                padding: 20px;
+                background: rgba(0, 240, 255, 0.05);
+                border-radius: 15px;
+            }
+            .features-list li {
+                margin: 10px 0;
+                padding-left: 30px;
+                position: relative;
+            }
+            .features-list li::before {
+                content: '✨';
+                position: absolute;
+                left: 0;
+                font-size: 1.2rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="success-container">
+            <div class="success-icon">🎉</div>
+            <h1>Payment Successful!</h1>
+            <p>Your premium subscription is now active. Get ready for an incredible AI experience!</p>
+            
+            <div class="features-list">
+                <h3 style="margin-bottom: 15px;">What's Next:</h3>
+                <ul style="list-style: none;">
+                    <li>Open your Telegram bot to access premium features</li>
+                    <li>Unlimited messages and content generation</li>
+                    <li>Advanced AI models and voice cloning</li>
+                    <li>Priority support and faster responses</li>
+                </ul>
+            </div>
+            
+            <a href="https://t.me/kanuji_bot" class="cta-button">Open Telegram Bot</a>
+            <a href="/" class="cta-button" style="background: linear-gradient(135deg, #4b0082, #8b008b);">Back to Home</a>
+        </div>
+    </body>
+    </html>
+    """)
 
 
 if __name__ == '__main__':

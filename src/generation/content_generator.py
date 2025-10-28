@@ -120,9 +120,18 @@ class ContentGenerator:
                         return {"success": False, "error": str(error)}
                     
                     if output:
-                        # Output can be URL, base64, or dict
+                        # Output can be URL, base64, dict, or list
                         if isinstance(output, dict):
                             image_url = output.get('url') or output.get('image') or str(output)
+                        elif isinstance(output, list):
+                            # Bytez returns list of URLs - take first one
+                            image_url = output[0] if output else None
+                            if not image_url:
+                                logger.error("Empty list returned from Bytez")
+                                if attempt < max_retries - 1:
+                                    time.sleep(retry_delay)
+                                    continue
+                                return {"success": False, "error": "No image generated"}
                         else:
                             image_url = str(output)
                         
@@ -145,11 +154,13 @@ class ContentGenerator:
                 except json.JSONDecodeError as je:
                     logger.error(f"❌ JSON decode error (attempt {attempt + 1}): {je}")
                     logger.error(f"This usually means the model returned non-JSON data")
+                    # Try a more reliable model on next attempt
                     if attempt < max_retries - 1:
-                        logger.info(f"⏳ Retrying with different model...")
+                        logger.info(f"⏳ Switching to FLUX.1-schnell (most reliable)...")
+                        model_info["model"] = "black-forest-labs/FLUX.1-schnell"
                         time.sleep(retry_delay)
                         continue
-                    return {"success": False, "error": "Model returned invalid format. Try a different model."}
+                    return {"success": False, "error": "Generation failed. Please try again or use /generate command."}
                     
             except Exception as e:
                 logger.error(f"❌ Error with Bytez SDK (attempt {attempt + 1}): {e}")
@@ -260,9 +271,18 @@ class ContentGenerator:
                         return {"success": False, "error": str(error)}
                     
                     if output:
-                        # Output can be URL, base64, or dict
+                        # Output can be URL, base64, dict, or list
                         if isinstance(output, dict):
                             video_url = output.get('url') or output.get('video') or str(output)
+                        elif isinstance(output, list):
+                            # Bytez returns list of URLs - take first one
+                            video_url = output[0] if output else None
+                            if not video_url:
+                                logger.error("Empty list returned from Bytez")
+                                if attempt < max_retries - 1:
+                                    time.sleep(retry_delay)
+                                    continue
+                                return {"success": False, "error": "No video generated"}
                         else:
                             video_url = str(output)
                         
@@ -418,9 +438,9 @@ class ContentGenerator:
                 "content_type": "artistic"
             }
         
-        # Default to realistic model
+        # Default to STABLE DIFFUSION XL - most reliable model
         return {
-            "model": self.config.bytez_models["image_dreamlike_photoreal"],
+            "model": "black-forest-labs/FLUX.1-schnell",  # Fast, reliable model
             "style": "realistic",
             "quality": "high",
             "content_type": "romantic"
