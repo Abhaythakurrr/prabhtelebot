@@ -1,15 +1,19 @@
 """
-Flask Website - Minimal Working Version
+Flask Website - Complete with Templates and Payment
 """
 
-from flask import Flask, render_template_string, request, jsonify
-from flask_socketio import SocketIO
+from flask import Flask, render_template, request, jsonify, redirect
+from flask_socketio import SocketIO, emit
 from src.core.config import get_config
+from src.core.user_manager import get_user_manager
 from src.payment.razorpay import get_payment_handler
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 config = get_config()
-app.config['SECRET_KEY'] = 'your-secret-key-change-this'
+app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
 
 # Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -18,6 +22,25 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 @app.route('/')
 def home():
     """Home page"""
+    return render_template('index.html')
+
+
+@app.route('/pricing')
+def pricing():
+    """Pricing page"""
+    return render_template('pricing.html')
+
+
+@app.route('/payment')
+def payment_page():
+    """Payment page"""
+    order_id = request.args.get('order_id')
+    user_id = request.args.get('user_id')
+    tier = request.args.get('tier')
+    
+    if not all([order_id, user_id, tier]):
+        return "Invalid payment link", 400
+    
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -80,104 +103,47 @@ def home():
     """)
 
 
-@app.route('/pricing')
-def pricing():
-    """Pricing page"""
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Pricing - My Prabh AI</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                min-height: 100vh;
-                padding: 40px 20px;
-            }
-            .container { max-width: 1200px; margin: 0 auto; }
-            h1 { text-align: center; font-size: 3rem; margin-bottom: 40px; }
-            .plans {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 30px;
-            }
-            .plan {
-                background: rgba(255,255,255,0.1);
-                padding: 30px;
-                border-radius: 20px;
-                backdrop-filter: blur(10px);
-                transition: transform 0.3s;
-            }
-            .plan:hover { transform: translateY(-10px); }
-            .plan h2 { font-size: 2rem; margin-bottom: 20px; }
-            .price { font-size: 2.5rem; margin: 20px 0; color: #FFD700; }
-            .features { list-style: none; margin: 20px 0; }
-            .features li { padding: 8px 0; }
-            .btn {
-                display: block;
-                padding: 15px;
-                background: white;
-                color: #667eea;
-                text-align: center;
-                text-decoration: none;
-                border-radius: 30px;
-                font-weight: bold;
-                margin-top: 20px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>💎 Pricing Plans</h1>
-            <div class="plans">
-                <div class="plan">
-                    <h2>🆓 FREE</h2>
-                    <div class="price">₹0</div>
-                    <ul class="features">
-                        <li>✅ 10 messages/day</li>
-                        <li>✅ 1 image/month</li>
-                        <li>✅ Basic AI</li>
-                    </ul>
-                    <a href="https://t.me/kanuji_bot" class="btn">Start Free</a>
-                </div>
-                <div class="plan">
-                    <h2>💎 BASIC</h2>
-                    <div class="price">₹299</div>
-                    <ul class="features">
-                        <li>✅ Unlimited messages</li>
-                        <li>✅ 50 images/month</li>
-                        <li>✅ 5 videos/month</li>
-                    </ul>
-                    <a href="#" class="btn">Subscribe</a>
-                </div>
-                <div class="plan">
-                    <h2>👑 PRIME</h2>
-                    <div class="price">₹899</div>
-                    <ul class="features">
-                        <li>✅ 500 images/month</li>
-                        <li>✅ 50 videos/month</li>
-                        <li>✅ NSFW content</li>
-                    </ul>
-                    <a href="#" class="btn">Subscribe</a>
-                </div>
-                <div class="plan">
-                    <h2>♾️ LIFETIME</h2>
-                    <div class="price">₹2999</div>
-                    <ul class="features">
-                        <li>✅ Unlimited everything</li>
-                        <li>✅ All features forever</li>
-                        <li>✅ VIP support</li>
-                    </ul>
-                    <a href="#" class="btn">Buy Lifetime</a>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    """)
+@app.route('/api/payment/verify', methods=['POST'])
+def verify_payment():
+    """Verify payment and upgrade user"""
+    try:
+        data = request.json
+        payment_handler = get_payment_handler()
+        user_manager = get_user_manager()
+        
+        # Verify payment
+        is_valid = payment_handler.verify_payment(
+            data['razorpay_order_id'],
+            data['razorpay_payment_id'],
+            data['razorpay_signature']
+        )
+        
+        if is_valid:
+            # Upgrade user
+            user_id = int(data['user_id'])
+            tier = data['tier']
+            duration = 30 if tier != "lifetime" else 999999
+            
+            user_manager.upgrade_subscription(user_id, tier, duration)
+            
+            logger.info(f"✅ Payment verified for user {user_id}, tier {tier}")
+            
+            return jsonify({
+                "success": True,
+                "message": "Payment successful! Your subscription is now active."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Payment verification failed"
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"❌ Payment verification error: {e}")
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
 
 
 @app.route('/health')

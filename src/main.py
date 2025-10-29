@@ -1,11 +1,11 @@
 """
-Main Entry Point - Bot + Website
+Main Entry Point - Advanced Bot + Website
 """
 
 import logging
 import threading
 from src.core.config import get_config
-from src.bot.handler import BotHandler
+from src.bot.advanced_handler import AdvancedBotHandler
 
 # Setup logging
 logging.basicConfig(
@@ -28,8 +28,19 @@ def run_website_thread():
 
 def main():
     """Main function"""
-    logger.info("🚀 Starting My Prabh AI Companion...")
-    logger.info("📊 System: 35 AI Models | Redis | SocketIO | Payment")
+    logger.info("=" * 60)
+    logger.info("🚀 MY PRABH AI - REVOLUTIONARY AI COMPANION")
+    logger.info("=" * 60)
+    logger.info("📊 Features:")
+    logger.info("   • 35+ AI Models")
+    logger.info("   • Deep Roleplay Engine")
+    logger.info("   • NSFW Content Support")
+    logger.info("   • Memory & Story System")
+    logger.info("   • Image/Video Generation")
+    logger.info("   • Proactive Conversations")
+    logger.info("   • Redis Real-time")
+    logger.info("   • Payment Integration")
+    logger.info("=" * 60)
     
     # Load config
     config = get_config()
@@ -47,8 +58,8 @@ def main():
     logger.info("✅ Website thread started")
     
     # Start bot (main thread)
-    logger.info("🤖 Starting Telegram bot...")
-    bot = BotHandler()
+    logger.info("🤖 Starting Advanced Telegram Bot...")
+    bot = AdvancedBotHandler()
     bot.run()
 
 

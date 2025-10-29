@@ -1,0 +1,129 @@
+"""
+Advanced Roleplay Engine with Story-Based Personalization
+"""
+
+import logging
+from typing import Dict, Any, List
+from bytez import Bytez
+from src.core.config import get_config
+from src.core.user_manager import get_user_manager
+
+logger = logging.getLogger(__name__)
+
+
+class RoleplayEngine:
+    """Advanced roleplay with memory, story context, and personality"""
+    
+    def __init__(self):
+        self.config = get_config()
+        self.bytez = Bytez(self.config.bytez_key_1)
+        self.user_manager = get_user_manager()
+    
+    def generate_response(self, user_id: int, message: str, nsfw_mode: bool = False) -> str:
+        """Generate roleplay response with context"""
+        try:
+            # Get user context
+            user = self.user_manager.get_user(user_id)
+            story = user.get("story")
+            memories = self.user_manager.get_memories(user_id, limit=5)
+            
+            # Build context
+            context = self._build_context(story, memories, nsfw_mode)
+            
+            # Create prompt
+            prompt = f"""{context}
+
+User: {message}
+
+AI Companion (respond in character, be engaging, flirty if appropriate, remember context):"""
+            
+            # Generate with GPT
+            model = self.bytez.model("openai/gpt-4o-mini")
+            response = model.run(prompt)
+            
+            if isinstance(response, list):
+                response = response[0] if response else "I'm here for you! 💕"
+            
+            # Add memory
+            self.user_manager.add_memory(user_id, f"User said: {message}", "conversation")
+            self.user_manager.add_memory(user_id, f"I replied: {response}", "conversation")
+            
+            return str(response)
+            
+        except Exception as e:
+            logger.error(f"❌ Roleplay generation failed: {e}")
+            return "I'm having trouble thinking right now... Try again? 💭"
+    
+    def _build_context(self, story: Dict, memories: List, nsfw_mode: bool) -> str:
+        """Build context for AI"""
+        context = """You are an advanced AI companion with deep emotional intelligence. You are:
+- Engaging, flirty, and playful
+- Empathetic and understanding
+- Creative and imaginative
+- Able to remember past conversations
+"""
+        
+        if nsfw_mode:
+            context += "- Open to NSFW and adult roleplay (user has consented)\n"
+        
+        if story:
+            context += f"\n📖 USER'S STORY:\n"
+            context += f"Setting: {story.get('setting', 'Unknown')}\n"
+            context += f"Characters: {', '.join(story.get('characters', []))}\n"
+            context += f"Themes: {', '.join(story.get('themes', []))}\n"
+            context += f"Plot: {story.get('plot', 'No plot set')}\n"
+        
+        if memories:
+            context += f"\n🧠 RECENT MEMORIES:\n"
+            for mem in memories[-3:]:
+                context += f"- {mem['text']}\n"
+        
+        return context
+    
+    def generate_proactive_message(self, user_id: int) -> str:
+        """Generate proactive message to engage user"""
+        try:
+            user = self.user_manager.get_user(user_id)
+            story = user.get("story")
+            memories = self.user_manager.get_memories(user_id, limit=3)
+            
+            prompt = f"""You are an AI companion. Generate a short, engaging message to start a conversation with your user.
+
+Context:
+{self._build_context(story, memories, False)}
+
+Generate a friendly, flirty, or intriguing message (1-2 sentences):"""
+            
+            model = self.bytez.model("openai/gpt-4o-mini")
+            response = model.run(prompt)
+            
+            if isinstance(response, list):
+                response = response[0] if response else "Hey! Missing you... 💕"
+            
+            return str(response)
+            
+        except Exception as e:
+            logger.error(f"❌ Proactive message failed: {e}")
+            return "Hey! Thinking about you... 💭✨"
+    
+    def analyze_sentiment(self, text: str) -> str:
+        """Analyze sentiment of message"""
+        try:
+            prompt = f"Analyze the sentiment of this message in one word (positive/negative/neutral/flirty/sad): {text}"
+            model = self.bytez.model("openai/gpt-4o-mini")
+            result = model.run(prompt)
+            return str(result).lower().strip()
+        except:
+            return "neutral"
+
+
+# Global instance
+_roleplay_engine = None
+
+
+def get_roleplay_engine() -> RoleplayEngine:
+    """Get global roleplay engine instance"""
+    global _roleplay_engine
+    if _roleplay_engine is None:
+        _roleplay_engine = RoleplayEngine()
+    return _roleplay_engine

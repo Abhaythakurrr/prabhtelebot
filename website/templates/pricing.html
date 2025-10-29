@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - My Prabh AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 20px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 1.3rem;
+            margin-bottom: 60px;
+            opacity: 0.9;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        
+        .plan {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .plan::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .plan:hover::before {
+            opacity: 1;
+        }
+        
+        .plan:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+            border-color: rgba(255,255,255,0.4);
+        }
+        
+        .plan-popular {
+            border: 3px solid #FFD700;
+            box-shadow: 0 20px 50px rgba(255,215,0,0.3);
+        }
+        
+        .popular-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #FFD700;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        
+        .plan-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .plan-name {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+        
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+        
+        .plan-period {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 30px;
+        }
+        
+        .plan-features {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+        
+        .plan-features li {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .plan-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-icon {
+            font-size: 1.2rem;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 18px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+        
+        .btn-primary:hover {
+            background: #FFD700;
+            color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        .btn-gold {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #333;
+        }
+        
+        .btn-gold:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(255,215,0,0.5);
+        }
+        
+        .comparison {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            margin-top: 60px;
+        }
+        
+        .comparison h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .comparison-table th {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        
+        .comparison-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .comparison-table { font-size: 0.9rem; }
+            .comparison-table th,
+            .comparison-table td { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💎 Choose Your Plan</h1>
+        <p class="subtitle">Unlock the full power of AI companionship</p>
+        
+        <div class="pricing-grid">
+            <div class="plan">
+                <div class="plan-icon">🆓</div>
+                <div class="plan-name">FREE</div>
+                <div class="plan-price">₹0</div>
+                <div class="plan-period">Forever</div>
+                <ul class="plan-features">
+                    <li><span class="feature-icon">✅</span> 10 messages/day</li>
+                    <li><span class="feature-icon">✅</span> 1 image/month</li>
+                    <li><span class="feature-icon">✅</span> Basic AI models</li>
+                    <li><span class="feature-icon">✅</span> 10 memory slots</li>
+                    <li><span class="feature-icon">❌</span> No videos</li>
+                    <li><span class="feature-icon">❌</span> No NSFW</li>
+                </ul>
+                <a href="https://t.me/kanuji_bot" class="btn btn-primary">Start Free</a>
+            </div>
+            
+            <div class="plan">
+                <div class="plan-icon">💎</div>
+                <div class="plan-name">BASIC</div>
+                <div class="plan-price">₹299</div>
+                <div class="plan-period">per month</div>
+                <ul class="plan-features">
+                    <li><span class="feature-icon">✅</span> Unlimited messages</li>
+                    <li><span class="feature-icon">✅</span> 50 images/month</li>
+                    <li><span class="feature-icon">✅</span> 5 videos/month</li>
+                    <li><span class="feature-icon">✅</span> 100 audio/month</li>
+                    <li><span class="feature-icon">✅</span> 50 memory slots</li>
+                    <li><span class="feature-icon">✅</span> Proactive messages</li>
+                    <li><span class="feature-icon">❌</span> No NSFW</li>
+                </ul>
+                <a href="https://t.me/kanuji_bot" class="btn btn-primary">Subscribe</a>
+            </div>
+            
+            <div class="plan plan-popular">
+                <div class="popular-badge">🔥 POPULAR</div>
+                <div class="plan-icon">👑</div>
+                <div class="plan-name">PRIME</div>
+                <div class="plan-price">₹899</div>
+                <div class="plan-period">per month</div>
+                <ul class="plan-features">
+                    <li><span class="feature-icon">✅</span> Unlimited messages</li>
+                    <li><span class="feature-icon">✅</span> 500 images/month</li>
+                    <li><span class="feature-icon">✅</span> 50 videos/month</li>
+                    <li><span class="feature-icon">✅</span> 500 audio/month</li>
+                    <li><span class="feature-icon">✅</span> 200 memory slots</li>
+                    <li><span class="feature-icon">✅</span> Proactive messages</li>
+                    <li><span class="feature-icon">🔞</span> NSFW content</li>
+                    <li><span class="feature-icon">✅</span> Priority support</li>
+                </ul>
+                <a href="https://t.me/kanuji_bot" class="btn btn-gold">Get Prime</a>
+            </div>
+            
+            <div class="plan">
+                <div class="plan-icon">♾️</div>
+                <div class="plan-name">LIFETIME</div>
+                <div class="plan-price">₹2999</div>
+                <div class="plan-period">one-time payment</div>
+                <ul class="plan-features">
+                    <li><span class="feature-icon">✅</span> Unlimited everything</li>
+                    <li><span class="feature-icon">✅</span> All features forever</li>
+                    <li><span class="feature-icon">✅</span> Unlimited memories</li>
+                    <li><span class="feature-icon">🔞</span> NSFW content</li>
+                    <li><span class="feature-icon">✅</span> VIP support</li>
+                    <li><span class="feature-icon">✅</span> Early access</li>
+                    <li><span class="feature-icon">✅</span> No recurring fees</li>
+                    <li><span class="feature-icon">💎</span> Lifetime updates</li>
+                </ul>
+                <a href="https://t.me/kanuji_bot" class="btn btn-gold">Buy Lifetime</a>
+            </div>
+        </div>
+        
+        <div class="comparison">
+            <h2>📊 Feature Comparison</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>FREE</th>
+                        <th>BASIC</th>
+                        <th>PRIME</th>
+                        <th>LIFETIME</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Messages/Day</td>
+                        <td>10</td>
+                        <td>∞</td>
+                        <td>∞</td>
+                        <td>∞</td>
+                    </tr>
+                    <tr>
+                        <td>Images/Month</td>
+                        <td>1</td>
+                        <td>50</td>
+                        <td>500</td>
+                        <td>∞</td>
+                    </tr>
+                    <tr>
+                        <td>Videos/Month</td>
+                        <td>0</td>
+                        <td>5</td>
+                        <td>50</td>
+                        <td>∞</td>
+                    </tr>
+                    <tr>
+                        <td>NSFW Content</td>
+                        <td>❌</td>
+                        <td>❌</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                    </tr>
+                    <tr>
+                        <td>Memory Slots</td>
+                        <td>10</td>
+                        <td>50</td>
+                        <td>200</td>
+                        <td>∞</td>
+                    </tr>
+                    <tr>
+                        <td>Proactive Messages</td>
+                        <td>❌</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
