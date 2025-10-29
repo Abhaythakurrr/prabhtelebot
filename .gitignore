@@ -1,0 +1,48 @@
+# Environment and API Keys - NEVER COMMIT
+.env
+.env.*
+*.env
+RAILWAY_ENV_PASTE_THIS.txt
+*_API_KEY*
+*_SECRET*
+*api_key*
+*secret*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.py
+*_test.py
+
+# Generated content
+*.png
+*.jpg
+*.mp4
+*.mp3
+*.wav
