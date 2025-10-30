@@ -44,10 +44,17 @@ class RoleplayEngine:
             
             # Generate with GPT
             model = self.bytez.model("openai/gpt-4o-mini")
-            response = model.run(messages)
+            result = model.run(messages)
             
-            if isinstance(response, list):
-                response = response[0] if response else "I'm here for you! 💕"
+            # Extract content from response
+            if hasattr(result, 'output') and result.output:
+                response = result.output.get('content', 'I'm here for you! 💕')
+            elif isinstance(result, dict):
+                response = result.get('content', str(result))
+            elif isinstance(result, list):
+                response = result[0] if result else "I'm here for you! 💕"
+            else:
+                response = str(result)
             
             # Add memory
             self.user_manager.add_memory(user_id, f"User said: {message}", "conversation")
@@ -104,10 +111,17 @@ class RoleplayEngine:
             ]
             
             model = self.bytez.model("openai/gpt-4o-mini")
-            response = model.run(messages)
+            result = model.run(messages)
             
-            if isinstance(response, list):
-                response = response[0] if response else "Hey! Missing you... 💕"
+            # Extract content from response
+            if hasattr(result, 'output') and result.output:
+                response = result.output.get('content', 'Hey! Missing you... 💕')
+            elif isinstance(result, dict):
+                response = result.get('content', str(result))
+            elif isinstance(result, list):
+                response = result[0] if result else "Hey! Missing you... 💕"
+            else:
+                response = str(result)
             
             return str(response)
             
@@ -130,7 +144,16 @@ class RoleplayEngine:
             ]
             model = self.bytez.model("openai/gpt-4o-mini")
             result = model.run(messages)
-            return str(result).lower().strip()
+            
+            # Extract content
+            if hasattr(result, 'output') and result.output:
+                sentiment = result.output.get('content', 'neutral')
+            elif isinstance(result, dict):
+                sentiment = result.get('content', 'neutral')
+            else:
+                sentiment = str(result)
+            
+            return sentiment.lower().strip()
         except:
             return "neutral"
 
