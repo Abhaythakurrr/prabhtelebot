@@ -48,11 +48,11 @@ class RoleplayEngine:
             
             # Extract content from response
             if hasattr(result, 'output') and result.output:
-                response = result.output.get('content', 'I'm here for you! 💕')
+                response = result.output.get('content', 'I am here for you!')
             elif isinstance(result, dict):
                 response = result.get('content', str(result))
             elif isinstance(result, list):
-                response = result[0] if result else "I'm here for you! 💕"
+                response = result[0] if result else "I am here for you!"
             else:
                 response = str(result)
             
@@ -63,8 +63,8 @@ class RoleplayEngine:
             return str(response)
             
         except Exception as e:
-            logger.error(f"❌ Roleplay generation failed: {e}")
-            return "I'm having trouble thinking right now... Try again? 💭"
+            logger.error(f"Roleplay generation failed: {e}")
+            return "I'm having trouble thinking right now... Try again?"
     
     def _build_context(self, story: Dict, memories: List, nsfw_mode: bool) -> str:
         """Build context for AI"""
@@ -79,14 +79,14 @@ class RoleplayEngine:
             context += "- Open to NSFW and adult roleplay (user has consented)\n"
         
         if story:
-            context += f"\n📖 USER'S STORY:\n"
+            context += f"\nUSER'S STORY:\n"
             context += f"Setting: {story.get('setting', 'Unknown')}\n"
             context += f"Characters: {', '.join(story.get('characters', []))}\n"
             context += f"Themes: {', '.join(story.get('themes', []))}\n"
             context += f"Plot: {story.get('plot', 'No plot set')}\n"
         
         if memories:
-            context += f"\n🧠 RECENT MEMORIES:\n"
+            context += f"\nRECENT MEMORIES:\n"
             for mem in memories[-3:]:
                 context += f"- {mem['text']}\n"
         
@@ -115,19 +115,19 @@ class RoleplayEngine:
             
             # Extract content from response
             if hasattr(result, 'output') and result.output:
-                response = result.output.get('content', 'Hey! Missing you... 💕')
+                response = result.output.get('content', 'Hey! Missing you...')
             elif isinstance(result, dict):
                 response = result.get('content', str(result))
             elif isinstance(result, list):
-                response = result[0] if result else "Hey! Missing you... 💕"
+                response = result[0] if result else "Hey! Missing you..."
             else:
                 response = str(result)
             
             return str(response)
             
         except Exception as e:
-            logger.error(f"❌ Proactive message failed: {e}")
-            return "Hey! Thinking about you... 💭✨"
+            logger.error(f"Proactive message failed: {e}")
+            return "Hey! Thinking about you..."
     
     def analyze_sentiment(self, text: str) -> str:
         """Analyze sentiment of message"""
