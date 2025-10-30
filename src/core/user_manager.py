@@ -6,13 +6,16 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
-from src.core.redis_manager import get_redis_manager
 
 logger = logging.getLogger(__name__)
 
 
 class UserManager:
     """Manage users, subscriptions, memories, and usage limits"""
+    
+    def __init__(self):
+        # Use in-memory storage for now (will add Redis later)
+        self._users = {}
     
     TIERS = {
         "free": {
@@ -56,17 +59,11 @@ class UserManager:
         }
     }
     
-    def __init__(self):
-        self.redis = get_redis_manager()
-    
     def get_user(self, user_id: int) -> Dict[str, Any]:
         """Get user data"""
-        key = f"user:{user_id}"
-        data = self.redis.get(key)
-        
-        if not data:
+        if user_id not in self._users:
             # Create new user
-            data = {
+            self._users[user_id] = {
                 "user_id": user_id,
                 "tier": "free",
                 "created_at": datetime.now().isoformat(),
@@ -85,14 +82,12 @@ class UserManager:
                     "nsfw_consent": False
                 }
             }
-            self.redis.set(key, data, expire=None)
         
-        return data
+        return self._users[user_id]
     
     def update_user(self, user_id: int, data: Dict[str, Any]):
         """Update user data"""
-        key = f"user:{user_id}"
-        self.redis.set(key, data, expire=None)
+        self._users[user_id] = data
     
     def upgrade_subscription(self, user_id: int, tier: str, duration_days: int = 30):
         """Upgrade user subscription"""

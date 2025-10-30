@@ -30,16 +30,21 @@ class RoleplayEngine:
             # Build context
             context = self._build_context(story, memories, nsfw_mode)
             
-            # Create prompt
-            prompt = f"""{context}
-
-User: {message}
-
-AI Companion (respond in character, be engaging, flirty if appropriate, remember context):"""
+            # Create messages array for chat models
+            messages = [
+                {
+                    "role": "system",
+                    "content": context
+                },
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ]
             
             # Generate with GPT
             model = self.bytez.model("openai/gpt-4o-mini")
-            response = model.run(prompt)
+            response = model.run(messages)
             
             if isinstance(response, list):
                 response = response[0] if response else "I'm here for you! 💕"
@@ -87,15 +92,19 @@ AI Companion (respond in character, be engaging, flirty if appropriate, remember
             story = user.get("story")
             memories = self.user_manager.get_memories(user_id, limit=3)
             
-            prompt = f"""You are an AI companion. Generate a short, engaging message to start a conversation with your user.
-
-Context:
-{self._build_context(story, memories, False)}
-
-Generate a friendly, flirty, or intriguing message (1-2 sentences):"""
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"You are an AI companion. Generate a short, engaging message to start a conversation.\n\n{self._build_context(story, memories, False)}"
+                },
+                {
+                    "role": "user",
+                    "content": "Generate a friendly, flirty, or intriguing message (1-2 sentences)"
+                }
+            ]
             
             model = self.bytez.model("openai/gpt-4o-mini")
-            response = model.run(prompt)
+            response = model.run(messages)
             
             if isinstance(response, list):
                 response = response[0] if response else "Hey! Missing you... 💕"
@@ -109,9 +118,18 @@ Generate a friendly, flirty, or intriguing message (1-2 sentences):"""
     def analyze_sentiment(self, text: str) -> str:
         """Analyze sentiment of message"""
         try:
-            prompt = f"Analyze the sentiment of this message in one word (positive/negative/neutral/flirty/sad): {text}"
+            messages = [
+                {
+                    "role": "system",
+                    "content": "Analyze sentiment in one word: positive/negative/neutral/flirty/sad"
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ]
             model = self.bytez.model("openai/gpt-4o-mini")
-            result = model.run(prompt)
+            result = model.run(messages)
             return str(result).lower().strip()
         except:
             return "neutral"

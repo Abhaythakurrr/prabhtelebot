@@ -15,10 +15,10 @@ class StoryProcessor:
     def __init__(self):
         self.stories = {}
     
-    def process_story(self, user_id: str, story_text: str) -> Dict[str, Any]:
-        """Process uploaded story"""
+    def analyze_story(self, story_text: str) -> Dict[str, Any]:
+        """Analyze story and return structured data"""
         try:
-            logger.info(f"📚 Processing story for user {user_id}")
+            logger.info(f"📚 Analyzing story...")
             
             # Extract characters
             characters = self.extract_characters(story_text)
@@ -29,27 +29,50 @@ class StoryProcessor:
             # Extract emotions
             emotions = self.extract_emotions(story_text)
             
-            # Store story
-            self.stories[user_id] = {
-                "text": story_text,
+            # Determine setting
+            setting = self._extract_setting(story_text)
+            
+            result = {
+                "text": story_text[:500],  # Store first 500 chars
                 "characters": characters,
                 "themes": themes,
                 "emotions": emotions,
-                "processed_at": str(logging.time())
+                "setting": setting,
+                "plot": story_text[:200]  # First 200 chars as plot summary
             }
             
-            logger.info(f"✅ Story processed: {len(characters)} characters, {len(themes)} themes")
+            logger.info(f"✅ Story analyzed: {len(characters)} characters, {len(themes)} themes")
             
-            return {
-                "success": True,
-                "characters": characters,
-                "themes": themes,
-                "emotions": emotions
-            }
+            return result
             
         except Exception as e:
-            logger.error(f"❌ Story processing failed: {e}")
-            return {"success": False, "error": str(e)}
+            logger.error(f"❌ Story analysis failed: {e}")
+            return {
+                "text": story_text[:500],
+                "characters": [],
+                "themes": ["general"],
+                "emotions": ["neutral"],
+                "setting": "Unknown",
+                "plot": story_text[:200]
+            }
+    
+    def _extract_setting(self, text: str) -> str:
+        """Extract setting from story"""
+        text_lower = text.lower()
+        
+        settings = {
+            "Fantasy": ["magic", "dragon", "wizard", "kingdom", "castle"],
+            "Sci-Fi": ["space", "robot", "future", "alien", "technology"],
+            "Modern": ["city", "office", "apartment", "car", "phone"],
+            "Historical": ["ancient", "medieval", "war", "empire", "century"],
+            "Romance": ["love", "heart", "kiss", "date", "relationship"]
+        }
+        
+        for setting, keywords in settings.items():
+            if any(keyword in text_lower for keyword in keywords):
+                return setting
+        
+        return "General"
     
     def extract_characters(self, text: str) -> List[str]:
         """Extract character names from story"""
