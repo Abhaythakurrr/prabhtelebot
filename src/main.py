@@ -19,11 +19,14 @@ logger = logging.getLogger(__name__)
 def run_website_thread():
     """Run website in separate thread"""
     try:
-        from website.app import run_website
+        from website.simple_app import run_website
         logger.info("🌐 Starting website...")
-        run_website()
+        config = get_config()
+        run_website(port=config.port)
     except Exception as e:
         logger.error(f"❌ Website error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def main():
