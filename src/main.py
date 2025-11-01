@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 def run_website_thread():
     """Run website in separate thread"""
     try:
-        from website.simple_app import run_website
-        logger.info("🌐 Starting website...")
+        from website.complete_app import run_website
+        logger.info("🌐 Starting complete website with payment integration...")
         config = get_config()
         run_website(port=config.port)
     except Exception as e:
