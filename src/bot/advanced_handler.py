@@ -31,34 +31,40 @@ class AdvancedBotHandler:
         """Handle /start command"""
         user_id = update.effective_user.id
         user = self.user_manager.get_user(user_id)
+        tier_info = self.user_manager.get_tier_info(user['tier'])
         
         keyboard = [
-            [InlineKeyboardButton("💬 Chat with Me", callback_data="chat")],
+            [InlineKeyboardButton("💬 Start Chatting", callback_data="chat")],
             [InlineKeyboardButton("🎨 Generate Image", callback_data="gen_image"),
-             InlineKeyboardButton("🎬 Generate Video", callback_data="gen_video")],
-            [InlineKeyboardButton("📖 Set My Story", callback_data="set_story"),
-             InlineKeyboardButton("🧠 My Memories", callback_data="view_memories")],
+             InlineKeyboardButton("🎬 Create Video", callback_data="gen_video")],
+            [InlineKeyboardButton("🎙️ Voice/Audio", callback_data="gen_audio"),
+             InlineKeyboardButton("📖 My Story", callback_data="set_story")],
+            [InlineKeyboardButton("🧠 View Memories", callback_data="view_memories"),
+             InlineKeyboardButton("📊 My Stats", callback_data="view_stats")],
             [InlineKeyboardButton("🔞 NSFW Mode", callback_data="toggle_nsfw"),
-             InlineKeyboardButton("💎 Upgrade", callback_data="premium")]
+             InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium")],
+            [InlineKeyboardButton("ℹ️ Help & Commands", callback_data="help")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        nsfw_status = "✅ ON" if user['preferences'].get('nsfw_consent', False) else "❌ OFF"
+        
         welcome_msg = f"""🌟 *Welcome to My Prabh AI!*
 
-I'm your advanced AI companion with:
-✨ Deep roleplay & personality
-🎨 Image & video generation
-🧠 Memory & context awareness
-📖 Story-based personalization
-🔞 NSFW content (Prime+)
-💬 Proactive conversations
+I'm your revolutionary AI companion with deep personality, memory, and creativity!
 
-*Your Status:*
-Tier: {user['tier'].upper()}
-Messages Today: {user['usage']['messages_today']}
-Images This Month: {user['usage']['images_this_month']}
+*Your Account:*
+├ Tier: *{user['tier'].upper()}* {'🔥' if user['tier'] in ['prime', 'lifetime'] else ''}
+├ User ID: `{user_id}`
+├ NSFW Mode: {nsfw_status}
+└ Member Since: {user['created_at'][:10]}
 
-Choose an option below! 💕"""
+*Today's Usage:*
+├ Messages: {user['usage']['messages_today']}/{tier_info['messages_per_day']}
+├ Images: {user['usage']['images_this_month']}/{tier_info['images_per_month']}
+└ Videos: {user['usage']['videos_this_month']}/{tier_info['videos_per_month']}
+
+Choose what you'd like to do:"""
         
         await update.message.reply_text(
             welcome_msg,
@@ -149,8 +155,18 @@ Choose an option below! 💕"""
         user_id = update.effective_user.id
         
         if query.data == "chat":
+            keyboard = [
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             await query.message.reply_text(
-                "💬 Chat mode activated! Send me any message! 💕"
+                "💬 *Chat Mode Activated!*\n\n"
+                "Just send me any message and I'll respond with personality!\n\n"
+                "I remember our conversations and adapt to your story. "
+                "Let's talk about anything! 😊",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
             )
             context.user_data["mode"] = "chat"
         
@@ -158,77 +174,291 @@ Choose an option below! 💕"""
             # Check limit
             can_generate, msg = self.user_manager.check_limit(user_id, "image")
             if not can_generate:
-                await query.message.reply_text(f"❌ {msg}\n\nUpgrade: /premium")
+                keyboard = [
+                    [InlineKeyboardButton("💎 Upgrade Now", callback_data="premium")],
+                    [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.message.reply_text(
+                    f"❌ *Limit Reached!*\n\n{msg}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
                 return
             
             keyboard = [
-                [InlineKeyboardButton("🎨 Normal", callback_data="img_normal")],
-                [InlineKeyboardButton("🌸 Anime", callback_data="img_anime")],
-                [InlineKeyboardButton("📸 Realistic", callback_data="img_realistic")],
-                [InlineKeyboardButton("🔞 NSFW", callback_data="img_nsfw")]
+                [InlineKeyboardButton("🎨 Normal Style", callback_data="img_normal"),
+                 InlineKeyboardButton("🌸 Anime Style", callback_data="img_anime")],
+                [InlineKeyboardButton("📸 Realistic", callback_data="img_realistic"),
+                 InlineKeyboardButton("🔞 NSFW", callback_data="img_nsfw")],
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
+            user = self.user_manager.get_user(user_id)
+            tier_info = self.user_manager.get_tier_info(user['tier'])
+            
             await query.message.reply_text(
-                "🎨 *Choose Image Style:*",
+                f"🎨 *Image Generation*\n\n"
+                f"Choose your style:\n\n"
+                f"Remaining: {tier_info['images_per_month'] - user['usage']['images_this_month']} images this month",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
         
         elif query.data.startswith("img_"):
             style = query.data.replace("img_", "")
+            
+            # Check NSFW permission
+            if style == "nsfw":
+                user = self.user_manager.get_user(user_id)
+                tier_info = self.user_manager.get_tier_info(user['tier'])
+                if not tier_info['nsfw_enabled']:
+                    keyboard = [
+                        [InlineKeyboardButton("💎 Upgrade to Prime", callback_data="premium")],
+                        [InlineKeyboardButton("🔙 Back", callback_data="gen_image")]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await query.message.reply_text(
+                        "🔞 *NSFW Content Locked*\n\n"
+                        "NSFW image generation requires Prime or Lifetime subscription!\n\n"
+                        "Upgrade now to unlock adult content.",
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown"
+                    )
+                    return
+            
             context.user_data["image_style"] = style
             context.user_data["waiting_for"] = "image_prompt"
             
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="gen_image")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            examples = {
+                "normal": "a beautiful sunset over mountains",
+                "anime": "anime girl with blue hair in a magical forest",
+                "realistic": "photorealistic portrait of a person smiling",
+                "nsfw": "explicit adult content (be specific)"
+            }
+            
             await query.message.reply_text(
                 f"🎨 *{style.upper()} Image Generation*\n\n"
-                "Send me your prompt!\n\n"
-                "Example: _A beautiful anime girl in a garden_",
+                f"Send me your detailed prompt!\n\n"
+                f"Example: _{examples.get(style, 'describe what you want')}_\n\n"
+                f"💡 Tip: Be specific for better results!",
+                reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
         
         elif query.data == "gen_video":
             can_generate, msg = self.user_manager.check_limit(user_id, "video")
             if not can_generate:
-                await query.message.reply_text(f"❌ {msg}\n\nUpgrade: /premium")
+                keyboard = [
+                    [InlineKeyboardButton("💎 Upgrade Now", callback_data="premium")],
+                    [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.message.reply_text(
+                    f"❌ *Limit Reached!*\n\n{msg}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
                 return
+            
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            user = self.user_manager.get_user(user_id)
+            tier_info = self.user_manager.get_tier_info(user['tier'])
             
             await query.message.reply_text(
                 "🎬 *Video Generation*\n\n"
                 "Send me your video prompt!\n\n"
-                "Example: _A cat playing in the snow_",
+                "Example: _A cat playing with a ball in slow motion_\n\n"
+                f"⏱️ This takes 2-3 minutes\n"
+                f"📊 Remaining: {tier_info['videos_per_month'] - user['usage']['videos_this_month']} videos",
+                reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
             context.user_data["waiting_for"] = "video_prompt"
         
+        elif query.data == "gen_audio":
+            can_generate, msg = self.user_manager.check_limit(user_id, "audio")
+            if not can_generate:
+                keyboard = [
+                    [InlineKeyboardButton("💎 Upgrade Now", callback_data="premium")],
+                    [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.message.reply_text(
+                    f"❌ *Limit Reached!*\n\n{msg}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+                return
+            
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "🎙️ *Audio/Voice Generation*\n\n"
+                "Send me the text you want me to speak!\n\n"
+                "Example: _Hello, I love you so much!_",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "audio_text"
+        
         elif query.data == "set_story":
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             await query.message.reply_text(
                 "📖 *Tell Me Your Story!*\n\n"
-                "Share your fantasy, scenario, or roleplay setting.\n\n"
-                "I'll remember it and adapt my personality!",
+                "Share your fantasy, scenario, or roleplay setting. I'll remember it and adapt!\n\n"
+                "Examples:\n"
+                "• _I'm a space explorer with my AI companion..._\n"
+                "• _We're in a fantasy kingdom with magic..._\n"
+                "• _Modern romance in a bustling city..._\n\n"
+                "Be creative! This shapes our entire relationship! ✨",
+                reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
             context.user_data["waiting_for"] = "story"
         
         elif query.data == "view_memories":
             memories = self.user_manager.get_memories(user_id, limit=10)
+            user = self.user_manager.get_user(user_id)
+            tier_info = self.user_manager.get_tier_info(user['tier'])
+            
+            keyboard = [
+                [InlineKeyboardButton("🗑️ Clear Memories", callback_data="clear_memories")],
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             if not memories:
-                await query.message.reply_text("🧠 No memories yet! Chat with me to create some! 💕")
+                await query.message.reply_text(
+                    "🧠 *Your Memories*\n\n"
+                    "No memories yet! Chat with me to create some!\n\n"
+                    f"Memory Slots: 0/{tier_info['memory_slots']}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
                 return
             
-            mem_text = "🧠 *Your Memories:*\n\n"
-            for mem in memories[-5:]:
-                mem_text += f"• {mem['text'][:100]}\n"
+            mem_text = f"🧠 *Your Memories*\n\n"
+            mem_text += f"Stored: {len(memories)}/{tier_info['memory_slots']}\n\n"
             
-            await query.message.reply_text(mem_text, parse_mode="Markdown")
+            for i, mem in enumerate(memories[-5:], 1):
+                mem_text += f"{i}. {mem['text'][:80]}...\n\n"
+            
+            await query.message.reply_text(
+                mem_text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "view_stats":
+            user = self.user_manager.get_user(user_id)
+            tier_info = self.user_manager.get_tier_info(user['tier'])
+            
+            keyboard = [
+                [InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium")],
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            nsfw_status = "✅ Enabled" if user['preferences'].get('nsfw_consent', False) else "❌ Disabled"
+            
+            stats_text = f"""📊 *Your Statistics*
+
+*Account Info:*
+├ Tier: *{user['tier'].upper()}*
+├ User ID: `{user_id}`
+├ NSFW: {nsfw_status}
+└ Member Since: {user['created_at'][:10]}
+
+*Usage This Month:*
+├ Messages Today: {user['usage']['messages_today']}/{tier_info['messages_per_day']}
+├ Images: {user['usage']['images_this_month']}/{tier_info['images_per_month']}
+├ Videos: {user['usage']['videos_this_month']}/{tier_info['videos_per_month']}
+└ Audio: {user['usage']['audio_this_month']}/{tier_info['audio_per_month']}
+
+*Features:*
+├ Memory Slots: {len(user['memories'])}/{tier_info['memory_slots']}
+├ Proactive Messages: {'✅' if tier_info['proactive_messages'] else '❌'}
+└ NSFW Access: {'✅' if tier_info['nsfw_enabled'] else '❌'}
+"""
+            
+            await query.message.reply_text(
+                stats_text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "clear_memories":
+            keyboard = [
+                [InlineKeyboardButton("✅ Yes, Clear All", callback_data="confirm_clear_memories")],
+                [InlineKeyboardButton("❌ No, Keep Them", callback_data="view_memories")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "⚠️ *Clear All Memories?*\n\n"
+                "This will delete all stored memories and conversation history.\n\n"
+                "Are you sure?",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "confirm_clear_memories":
+            user = self.user_manager.get_user(user_id)
+            user['memories'] = []
+            self.user_manager.update_user(user_id, user)
+            
+            keyboard = [
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "✅ *Memories Cleared!*\n\n"
+                "All memories have been deleted. Start fresh!",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
         
         elif query.data == "toggle_nsfw":
             user = self.user_manager.get_user(user_id)
             tier_info = self.user_manager.get_tier_info(user["tier"])
             
             if not tier_info["nsfw_enabled"]:
+                keyboard = [
+                    [InlineKeyboardButton("💎 Upgrade to Prime", callback_data="premium")],
+                    [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 await query.message.reply_text(
-                    "🔞 NSFW requires Prime or Lifetime!\n\nUpgrade: /premium"
+                    "🔞 *NSFW Mode Locked*\n\n"
+                    "NSFW content requires Prime or Lifetime subscription!\n\n"
+                    "Features include:\n"
+                    "• Adult roleplay conversations\n"
+                    "• NSFW image generation\n"
+                    "• Explicit video content\n"
+                    "• No content restrictions\n\n"
+                    "Upgrade now to unlock! 🔥",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
                 )
                 return
             
@@ -236,8 +466,75 @@ Choose an option below! 💕"""
             user["preferences"]["nsfw_consent"] = not current
             self.user_manager.update_user(user_id, user)
             
-            status = "ENABLED ✅" if not current else "DISABLED ❌"
-            await query.message.reply_text(f"🔞 NSFW Mode: {status}")
+            keyboard = [
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if not current:
+                status_msg = """🔞 *NSFW Mode ENABLED*
+
+Adult content is now available!
+
+You can now:
+✅ Generate NSFW images
+✅ Create adult videos
+✅ Have explicit roleplay conversations
+
+⚠️ You confirm you are 18+ years old."""
+            else:
+                status_msg = """🔞 *NSFW Mode DISABLED*
+
+Adult content is now restricted.
+
+All content will be SFW (Safe For Work)."""
+            
+            await query.message.reply_text(
+                status_msg,
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "help":
+            keyboard = [
+                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            help_text = """ℹ️ *Help & Commands*
+
+*Main Commands:*
+/start - Main menu
+/chat - Start chatting
+/story - Set your story
+/nsfw - Toggle NSFW mode
+/premium - View pricing
+
+*How to Use:*
+1️⃣ Set your story for personalized roleplay
+2️⃣ Chat with me - I remember everything!
+3️⃣ Generate images, videos, audio
+4️⃣ Upgrade for unlimited access
+
+*Tips:*
+💡 Be specific in prompts for better results
+💡 Your story shapes my personality
+💡 I remember our conversations
+💡 NSFW requires Prime subscription
+
+*Support:*
+Website: Check /premium for link
+Issues: Contact through website"""
+            
+            await query.message.reply_text(
+                help_text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "back_to_menu":
+            # Show main menu again
+            await self.start_command(update, context)
         
         elif query.data == "premium":
             await self.premium_command(update, context)
@@ -334,9 +631,37 @@ Choose an option below! 💕"""
             result = self.generator.generate_video(text, nsfw=nsfw)
             
             if result["success"]:
+                keyboard = [
+                    [InlineKeyboardButton("🎬 Generate Another", callback_data="gen_video")],
+                    [InlineKeyboardButton("🔙 Main Menu", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
                 await update.message.reply_video(
                     video=result["url"],
-                    caption=f"✨ {text[:100]}"
+                    caption=f"✨ {text[:100]}",
+                    reply_markup=reply_markup
+                )
+            else:
+                await update.message.reply_text(f"❌ Failed: {result['error']}")
+            
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "audio_text":
+            await update.message.reply_text("🎙️ Generating audio... Please wait!")
+            result = self.generator.generate_audio(text)
+            
+            if result["success"]:
+                keyboard = [
+                    [InlineKeyboardButton("🎙️ Generate Another", callback_data="gen_audio")],
+                    [InlineKeyboardButton("🔙 Main Menu", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_audio(
+                    audio=result["url"],
+                    caption="✨ Generated audio",
+                    reply_markup=reply_markup
                 )
             else:
                 await update.message.reply_text(f"❌ Failed: {result['error']}")
