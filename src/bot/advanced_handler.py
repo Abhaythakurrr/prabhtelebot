@@ -563,16 +563,17 @@ Issues: Contact through website"""
                 parse_mode="Markdown"
             )
         
-        elif query.data == "back_to_menu":
-            # Show main menu again
-            await self.start_command(update, context)
-        
         elif query.data == "premium":
             await self.premium_command(update, context)
         
         elif query.data.startswith("buy_"):
+            # Handle all buy_ buttons (buy_basic, buy_prime, buy_lifetime)
             tier = query.data.replace("buy_", "")
             await self._handle_payment(query.message, user_id, tier)
+        
+        elif query.data == "back_to_menu":
+            # Show main menu again
+            await self.start_command(update, context)
     
     async def _handle_payment(self, message, user_id: int, tier: str):
         """Handle payment initiation"""
