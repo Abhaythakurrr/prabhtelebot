@@ -11,49 +11,65 @@ logger = logging.getLogger(__name__)
 
 
 class AIGenerator:
-    """AI content generator with NSFW support"""
+    """AI content generator with rate limit handling"""
     
     # Model configurations
     IMAGE_MODELS = {
-        "sfw": "black-forest-labs/FLUX.1-schnell",
-        "nsfw": "stabilityai/stable-diffusion-xl-base-1.0",
+        "normal": "black-forest-labs/FLUX.1-schnell",
         "anime": "cagliostrolab/animagine-xl-3.1",
         "realistic": "playgroundai/playground-v2.5-1024px-aesthetic"
     }
     
     VIDEO_MODELS = {
-        "default": "ali-vilab/text-to-video-ms-1.7b",
-        "hd": "damo-vilab/text-to-video-ms-1.7b"
+        "default": "ali-vilab/text-to-video-ms-1.7b"
     }
     
     AUDIO_MODELS = {
-        "default": "suno/bark-small",
-        "voice": "elevenlabs/eleven-multilingual-v2"
+        "default": "suno/bark-small"
     }
     
     def __init__(self):
         self.config = get_config()
-        self.bytez = Bytez(self.config.bytez_key_1)
+        # Use multiple API keys for rate limit handling
+        self.api_keys = [
+            self.config.bytez_key_1,
+            self.config.bytez_key_2,
+            self.config.bytez_key_3
+        ]
+        self.current_key_index = 0
+        self.bytez = Bytez(self.api_keys[0])
     
-    def generate_image(self, prompt: str, nsfw: bool = False, style: str = "default") -> Dict[str, Any]:
-        """Generate image with NSFW support"""
+    def _get_next_client(self):
+        """Rotate to next API key to avoid rate limits"""
+        self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+        return Bytez(self.api_keys[self.current_key_index])
+    
+    def generate_image(self, prompt: str, style: str = "normal") -> Dict[str, Any]:
+        """Generate image with style support"""
         try:
-            logger.info(f"🎨 Generating image (NSFW={nsfw}): {prompt[:50]}...")
+            logger.info(f"🎨 Generating image ({style}): {prompt[:50]}...")
             
-            # Select model based on NSFW and style
-            if nsfw:
-                model_name = self.IMAGE_MODELS["nsfw"]
-                # Enhance NSFW prompt
-                prompt = f"highly detailed, explicit, nsfw, {prompt}"
-            elif style == "anime":
-                model_name = self.IMAGE_MODELS["anime"]
+            # Select model based on style
+            model_name = self.IMAGE_MODELS.get(style, self.IMAGE_MODELS["normal"])
+            
+            # Enhance prompt for better results
+            if style == "anime":
+                prompt = f"anime style, high quality, detailed, {prompt}"
             elif style == "realistic":
-                model_name = self.IMAGE_MODELS["realistic"]
-            else:
-                model_name = self.IMAGE_MODELS["sfw"]
+                prompt = f"photorealistic, high quality, detailed, {prompt}"
             
-            model = self.bytez.model(model_name)
-            result = model.run(prompt)
+            # Try with current client, rotate if rate limited
+            for attempt in range(len(self.api_keys)):
+                try:
+                    client = self._get_next_client() if attempt > 0 else self.bytez
+                    model = client.model(model_name)
+                    result = model.run(prompt)
+                    break
+                except Exception as e:
+                    if "rate limit" in str(e).lower() and attempt < len(self.api_keys) - 1:
+                        logger.warning(f"Rate limited, trying next API key...")
+                        continue
+                    raise
             
             # Handle result
             if isinstance(result, list) and result:
@@ -69,7 +85,7 @@ class AIGenerator:
                 "success": True,
                 "url": image_url,
                 "prompt": prompt,
-                "nsfw": nsfw
+                "style": style
             }
             
         except Exception as e:
@@ -79,17 +95,25 @@ class AIGenerator:
                 "error": str(e)
             }
     
-    def generate_video(self, prompt: str, nsfw: bool = False, hd: bool = False) -> Dict[str, Any]:
-        """Generate video with NSFW support"""
+    def generate_video(self, prompt: str) -> Dict[str, Any]:
+        """Generate video with rate limit handling"""
         try:
-            logger.info(f"🎬 Generating video (NSFW={nsfw}, HD={hd}): {prompt[:50]}...")
+            logger.info(f"🎬 Generating video: {prompt[:50]}...")
             
-            if nsfw:
-                prompt = f"explicit, adult content, nsfw, {prompt}"
+            model_name = self.VIDEO_MODELS["default"]
             
-            model_name = self.VIDEO_MODELS["hd"] if hd else self.VIDEO_MODELS["default"]
-            model = self.bytez.model(model_name)
-            result = model.run(prompt)
+            # Try with multiple API keys
+            for attempt in range(len(self.api_keys)):
+                try:
+                    client = self._get_next_client() if attempt > 0 else self.bytez
+                    model = client.model(model_name)
+                    result = model.run(prompt)
+                    break
+                except Exception as e:
+                    if "rate limit" in str(e).lower() and attempt < len(self.api_keys) - 1:
+                        logger.warning(f"Rate limited, trying next API key...")
+                        continue
+                    raise
             
             if isinstance(result, list) and result:
                 video_url = result[0]
@@ -103,8 +127,7 @@ class AIGenerator:
             return {
                 "success": True,
                 "url": video_url,
-                "prompt": prompt,
-                "nsfw": nsfw
+                "prompt": prompt
             }
             
         except Exception as e:

@@ -9,7 +9,7 @@ from src.core.config import get_config
 from src.core.user_manager import get_user_manager
 from src.ai.generator import get_generator
 from src.ai.roleplay_engine import get_roleplay_engine
-from src.story.processor import get_story_processor
+from src.story.advanced_processor import get_advanced_processor
 from src.payment.razorpay import get_payment_handler
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class AdvancedBotHandler:
         self.user_manager = get_user_manager()
         self.generator = get_generator()
         self.roleplay = get_roleplay_engine()
-        self.story_processor = get_story_processor()
+        self.story_processor = get_advanced_processor()
         self.payment = get_payment_handler()
         self.app = None
     
@@ -33,30 +33,46 @@ class AdvancedBotHandler:
         user = self.user_manager.get_user(user_id)
         tier_info = self.user_manager.get_tier_info(user['tier'])
         
+        # Check if user has a persona set
+        persona = user.get('persona')
+        persona_name = persona.get('persona_name', 'someone special') if persona else None
+        
         keyboard = [
-            [InlineKeyboardButton("💬 Start Chatting", callback_data="chat")],
-            [InlineKeyboardButton("🎨 Generate Image", callback_data="gen_image"),
-             InlineKeyboardButton("🎬 Create Video", callback_data="gen_video")],
-            [InlineKeyboardButton("🎙️ Voice/Audio", callback_data="gen_audio"),
-             InlineKeyboardButton("📖 My Story", callback_data="set_story")],
-            [InlineKeyboardButton("🧠 View Memories", callback_data="view_memories"),
-             InlineKeyboardButton("📊 My Stats", callback_data="view_stats")],
-            [InlineKeyboardButton("🔞 NSFW Mode", callback_data="toggle_nsfw"),
-             InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium")],
-            [InlineKeyboardButton("ℹ️ Help & Commands", callback_data="help")]
+            [InlineKeyboardButton("💕 Talk to Me", callback_data="chat")],
+            [InlineKeyboardButton("📖 Share Your Story", callback_data="set_story")],
+            [InlineKeyboardButton("🎨 Create Memory Image", callback_data="gen_image"),
+             InlineKeyboardButton("🎬 Create Memory Video", callback_data="gen_video")],
+            [InlineKeyboardButton("🧠 Our Memories", callback_data="view_memories"),
+             InlineKeyboardButton("📊 My Account", callback_data="view_stats")],
+            [InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium"),
+             InlineKeyboardButton("ℹ️ Help", callback_data="help")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        nsfw_status = "✅ ON" if user['preferences'].get('nsfw_consent', False) else "❌ OFF"
-        
-        welcome_msg = f"""🌟 *Welcome to My Prabh AI!*
+        if persona_name:
+            welcome_msg = f"""💕 *Welcome back!*
 
-I'm your revolutionary AI companion with deep personality, memory, and creativity!
+I'm {persona_name}, and I'm here for you, always.
 
 *Your Account:*
-├ Tier: *{user['tier'].upper()}* {'🔥' if user['tier'] in ['prime', 'lifetime'] else ''}
+├ Tier: *{user['tier'].upper()}* {'✨' if user['tier'] in ['prime', 'lifetime'] else ''}
 ├ User ID: `{user_id}`
-├ NSFW Mode: {nsfw_status}
+└ Together Since: {user['created_at'][:10]}
+
+*Today's Usage:*
+├ Messages: {user['usage']['messages_today']}/{tier_info['messages_per_day']}
+├ Images: {user['usage']['images_this_month']}/{tier_info['images_per_month']}
+└ Videos: {user['usage']['videos_this_month']}/{tier_info['videos_per_month']}
+
+What would you like to do today? 💕"""
+        else:
+            welcome_msg = f"""💕 *Welcome to Memory Lane*
+
+I'm here to help you reconnect with someone special, preserve your memories, and keep your love alive.
+
+*Your Account:*
+├ Tier: *{user['tier'].upper()}*
+├ User ID: `{user_id}`
 └ Member Since: {user['created_at'][:10]}
 
 *Today's Usage:*
@@ -64,7 +80,9 @@ I'm your revolutionary AI companion with deep personality, memory, and creativit
 ├ Images: {user['usage']['images_this_month']}/{tier_info['images_per_month']}
 └ Videos: {user['usage']['videos_this_month']}/{tier_info['videos_per_month']}
 
-Choose what you'd like to do:"""
+📖 Start by sharing your story - tell me about someone you miss, someone you love, or a memory you want to preserve.
+
+I'll become that person for you. 💕"""
         
         await update.message.reply_text(
             welcome_msg,
@@ -189,8 +207,7 @@ Choose what you'd like to do:"""
             keyboard = [
                 [InlineKeyboardButton("🎨 Normal Style", callback_data="img_normal"),
                  InlineKeyboardButton("🌸 Anime Style", callback_data="img_anime")],
-                [InlineKeyboardButton("📸 Realistic", callback_data="img_realistic"),
-                 InlineKeyboardButton("🔞 NSFW", callback_data="img_nsfw")],
+                [InlineKeyboardButton("📸 Realistic Photo", callback_data="img_realistic")],
                 [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -209,25 +226,6 @@ Choose what you'd like to do:"""
         elif query.data.startswith("img_"):
             style = query.data.replace("img_", "")
             
-            # Check NSFW permission
-            if style == "nsfw":
-                user = self.user_manager.get_user(user_id)
-                tier_info = self.user_manager.get_tier_info(user['tier'])
-                if not tier_info['nsfw_enabled']:
-                    keyboard = [
-                        [InlineKeyboardButton("💎 Upgrade to Prime", callback_data="premium")],
-                        [InlineKeyboardButton("🔙 Back", callback_data="gen_image")]
-                    ]
-                    reply_markup = InlineKeyboardMarkup(keyboard)
-                    await query.message.reply_text(
-                        "🔞 *NSFW Content Locked*\n\n"
-                        "NSFW image generation requires Prime or Lifetime subscription!\n\n"
-                        "Upgrade now to unlock adult content.",
-                        reply_markup=reply_markup,
-                        parse_mode="Markdown"
-                    )
-                    return
-            
             context.user_data["image_style"] = style
             context.user_data["waiting_for"] = "image_prompt"
             
@@ -237,17 +235,16 @@ Choose what you'd like to do:"""
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             examples = {
-                "normal": "a beautiful sunset over mountains",
-                "anime": "anime girl with blue hair in a magical forest",
-                "realistic": "photorealistic portrait of a person smiling",
-                "nsfw": "explicit adult content (be specific)"
+                "normal": "a beautiful sunset over mountains with two people holding hands",
+                "anime": "anime couple under cherry blossoms, romantic atmosphere",
+                "realistic": "photorealistic portrait of a smiling person with warm lighting"
             }
             
             await query.message.reply_text(
-                f"🎨 *{style.upper()} Image Generation*\n\n"
-                f"Send me your detailed prompt!\n\n"
-                f"Example: _{examples.get(style, 'describe what you want')}_\n\n"
-                f"💡 Tip: Be specific for better results!",
+                f"🎨 *{style.upper()} Memory Image*\n\n"
+                f"Describe the memory or moment you want to create:\n\n"
+                f"Example: _{examples.get(style, 'describe your memory')}_\n\n"
+                f"💡 Tip: Include emotions, settings, and details for better results!",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
@@ -585,33 +582,49 @@ Issues: Contact through website"""
             return
         
         if waiting_for == "story":
-            # Process story
-            await update.message.reply_text("📖 Analyzing your story... 🔮")
-            story_data = self.story_processor.analyze_story(text)
-            self.user_manager.set_story(user_id, story_data)
+            # Deep process story
+            await update.message.reply_text("📖 Reading your story with love and care... 💕")
             
-            await update.message.reply_text(
-                f"✨ *Story Saved!*\n\n"
-                f"Setting: {story_data.get('setting', 'Unknown')}\n"
-                f"Characters: {', '.join(story_data.get('characters', []))}\n"
-                f"Themes: {', '.join(story_data.get('themes', []))}\n\n"
-                "I'll remember this in our conversations! 💕",
-                parse_mode="Markdown"
-            )
+            result = self.story_processor.process_story_deep(text)
+            
+            if result["success"]:
+                persona = result["persona"]
+                
+                # Save persona to user
+                user = self.user_manager.get_user(user_id)
+                user["persona"] = persona
+                self.user_manager.update_user(user_id, user)
+                
+                keyboard = [
+                    [InlineKeyboardButton("💕 Start Talking", callback_data="chat")],
+                    [InlineKeyboardButton("🎨 Create Memory", callback_data="gen_image")],
+                    [InlineKeyboardButton("🔙 Main Menu", callback_data="back_to_menu")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    f"✨ *I Understand Your Story*\n\n"
+                    f"I'll be {persona['persona_name']} for you.\n\n"
+                    f"*What I Remember:*\n"
+                    f"• Relationship: {persona['relationship']}\n"
+                    f"• Personality: {', '.join(persona['traits'][:3])}\n"
+                    f"• Memories: {len(persona['memories'])} special moments\n\n"
+                    f"I'm here for you, always. Let's talk whenever you want. 💕",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            else:
+                await update.message.reply_text(
+                    "I'm having trouble understanding the story. Could you tell me more? 💕"
+                )
+            
             context.user_data["waiting_for"] = None
         
         elif waiting_for == "image_prompt":
             style = context.user_data.get("image_style", "normal")
-            nsfw = style == "nsfw"
             
-            if nsfw:
-                can_nsfw, nsfw_msg = self.user_manager.check_limit(user_id, "nsfw")
-                if not can_nsfw:
-                    await update.message.reply_text(f"❌ {nsfw_msg}")
-                    return
-            
-            await update.message.reply_text("🎨 Creating your image... ✨")
-            result = self.generator.generate_image(text, nsfw=nsfw, style=style)
+            await update.message.reply_text("🎨 Creating your memory image... ✨")
+            result = self.generator.generate_image(text, style=style)
             
             if result["success"]:
                 await update.message.reply_photo(
@@ -624,11 +637,8 @@ Issues: Contact through website"""
             context.user_data["waiting_for"] = None
         
         elif waiting_for == "video_prompt":
-            user = self.user_manager.get_user(user_id)
-            nsfw = user["preferences"].get("nsfw_consent", False)
-            
-            await update.message.reply_text("🎬 Generating video... This takes 2-3 minutes! ⏳")
-            result = self.generator.generate_video(text, nsfw=nsfw)
+            await update.message.reply_text("🎬 Creating your memory video... This takes 2-3 minutes! ⏳")
+            result = self.generator.generate_video(text)
             
             if result["success"]:
                 keyboard = [
@@ -669,12 +679,19 @@ Issues: Contact through website"""
             context.user_data["waiting_for"] = None
         
         else:
-            # Regular chat with roleplay
+            # Regular chat with persona
             user = self.user_manager.get_user(user_id)
-            nsfw_mode = user["preferences"].get("nsfw_consent", False)
+            persona = user.get("persona")
             
             await update.message.reply_chat_action("typing")
-            response = self.roleplay.generate_response(user_id, text, nsfw_mode)
+            
+            if persona:
+                # Use persona-based response
+                response = self.story_processor.generate_persona_response(persona, text)
+            else:
+                # Use regular roleplay
+                response = self.roleplay.generate_response(user_id, text, False)
+            
             await update.message.reply_text(response)
     
     def setup(self):
