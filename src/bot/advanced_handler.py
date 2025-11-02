@@ -133,7 +133,7 @@ I'll listen with my whole heart. 💕"""
             "• The little things that made them unique\n"
             "• Beautiful moments you shared\n"
             "• Why they're so precious to you\n\n"
-            "You can write it here or upload a document (txt, pdf, doc). "
+            "You can write it here or upload a *.txt file*. "
             "Take all the time you need - I'm here to listen with love and care. 💕",
             reply_markup=reply_markup,
             parse_mode="Markdown"
@@ -345,12 +345,17 @@ I'll listen with my whole heart. 💕"""
             
             await query.message.reply_text(
                 "📄 *Upload Your Story*\n\n"
-                "Send me a document file (txt, pdf, doc, docx) with your story.\n\n"
+                "Send me a *.txt file* with your story.\n\n"
                 "This can be:\n"
                 "• A letter you wrote to them\n"
                 "• A journal about your time together\n"
                 "• Notes about their personality\n"
                 "• Anything that captures who they were\n\n"
+                "💡 *How to create a .txt file:*\n"
+                "1. Open Notepad (Windows) or TextEdit (Mac)\n"
+                "2. Write your story\n"
+                "3. Save as .txt file\n"
+                "4. Send it here\n\n"
                 "I'll read it with love and remember every word. 💕",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
@@ -606,6 +611,15 @@ Issues: Contact through website"""
             try:
                 document = update.message.document
                 
+                # Check if it's a .txt file
+                if not document.file_name.endswith('.txt'):
+                    await update.message.reply_text(
+                        "💕 Please send a *.txt file* only.\n\n"
+                        "You can create one using Notepad (Windows) or TextEdit (Mac).\n\n"
+                        "Or you can choose to write your story directly here instead! 💕"
+                    )
+                    return
+                
                 # Download file
                 file = await context.bot.get_file(document.file_id)
                 file_content = await file.download_as_bytearray()
@@ -658,7 +672,9 @@ Issues: Contact through website"""
             except Exception as e:
                 logger.error(f"Document processing error: {e}")
                 await update.message.reply_text(
-                    "I had trouble reading that file. Could you try writing your story directly instead? I'm here to listen. 💕"
+                    "💕 I had trouble reading that file.\n\n"
+                    "Please make sure it's a *.txt file* created with Notepad or TextEdit.\n\n"
+                    "Or you can write your story directly here - I'm here to listen. 💕"
                 )
                 context.user_data["waiting_for"] = None
     
