@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 def run_website_thread():
     """Run website in separate thread"""
     try:
-        from website.love_app import run_website
-        logger.info("💕 Starting Memory Lane website...")
+        from website.prabh_app import run_website
+        logger.info("💕 Starting Prabh website...")
         config = get_config()
         run_website(port=config.port)
     except Exception as e:
@@ -32,7 +32,7 @@ def run_website_thread():
 def main():
     """Main function"""
     logger.info("=" * 60)
-    logger.info("💕 MEMORY LANE - KEEP LOVE ALIVE FOREVER")
+    logger.info("💕 PRABH - KEEP LOVE ALIVE FOREVER")
     logger.info("=" * 60)
     logger.info("📊 Features:")
     logger.info("   • Deep Story Processing")
