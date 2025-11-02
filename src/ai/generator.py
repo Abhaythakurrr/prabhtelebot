@@ -13,35 +13,50 @@ logger = logging.getLogger(__name__)
 class AIGenerator:
     """AI content generator with rate limit handling"""
     
-    # Model configurations
+    # Model configurations - Using your available models
     IMAGE_MODELS = {
-        "normal": "black-forest-labs/FLUX.1-schnell",
-        "anime": "cagliostrolab/animagine-xl-3.1",
-        "realistic": "playgroundai/playground-v2.5-1024px-aesthetic"
+        "normal": "dreamlike-art/dreamlike-photoreal-2.0",
+        "anime": "dreamlike-art/dreamlike-anime-1.0",
+        "realistic": "stabilityai/stable-diffusion-xl-base-1.0",
+        "artistic": "Lykon/DreamShaper",
+        "kohaku": "KBlueLeaf/Kohaku-XL-Zeta"
     }
     
     VIDEO_MODELS = {
-        "default": "ali-vilab/text-to-video-ms-1.7b"
+        "default": "ali-vilab/text-to-video-ms-1.7b",
+        "hd": "cerspense/zeroscope_v2_576w"
     }
     
     AUDIO_MODELS = {
-        "default": "suno/bark-small"
+        "speech": "suno/bark-small",
+        "voice": "suno/bark",
+        "music": "facebook/musicgen-stereo-small",
+        "music_large": "facebook/musicgen-stereo-large"
     }
     
     def __init__(self):
         self.config = get_config()
         # Use multiple API keys for rate limit handling
-        self.api_keys = [
-            self.config.bytez_key_1,
-            self.config.bytez_key_2,
-            self.config.bytez_key_3
-        ]
+        self.api_keys = []
+        
+        # Add available API keys
+        if hasattr(self.config, 'bytez_key_1') and self.config.bytez_key_1:
+            self.api_keys.append(self.config.bytez_key_1)
+        if hasattr(self.config, 'bytez_key_2') and self.config.bytez_key_2:
+            self.api_keys.append(self.config.bytez_key_2)
+        if hasattr(self.config, 'bytez_key_3') and self.config.bytez_key_3:
+            self.api_keys.append(self.config.bytez_key_3)
+        
+        if not self.api_keys:
+            raise ValueError("No Bytez API keys configured!")
+        
         self.current_key_index = 0
         self.bytez = Bytez(self.api_keys[0])
     
     def _get_next_client(self):
-        """Rotate to next API key to avoid rate limits"""
+        """Rotate to next API key to avoid rate limits (1 concurrent per key)"""
         self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+        logger.info(f"Switching to API key {self.current_key_index + 1}/{len(self.api_keys)}")
         return Bytez(self.api_keys[self.current_key_index])
     
     def generate_image(self, prompt: str, style: str = "normal") -> Dict[str, Any]:
@@ -137,13 +152,26 @@ class AIGenerator:
                 "error": str(e)
             }
     
-    def generate_audio(self, text: str, user_tier: str = "free") -> Dict[str, Any]:
+    def generate_audio(self, text: str, audio_type: str = "speech") -> Dict[str, Any]:
         """Generate audio using Bytez"""
         try:
-            logger.info(f"🎙️ Generating audio: {text[:50]}...")
+            logger.info(f"🎙️ Generating audio ({audio_type}): {text[:50]}...")
             
-            model = self.bytez.model("suno/bark-small")
-            result = model.run(text)
+            # Select model based on type
+            model_name = self.AUDIO_MODELS.get(audio_type, self.AUDIO_MODELS["speech"])
+            
+            # Try with multiple API keys
+            for attempt in range(len(self.api_keys)):
+                try:
+                    client = self._get_next_client() if attempt > 0 else self.bytez
+                    model = client.model(model_name)
+                    result = model.run(text)
+                    break
+                except Exception as e:
+                    if "rate limit" in str(e).lower() and attempt < len(self.api_keys) - 1:
+                        logger.warning(f"Rate limited, trying next API key...")
+                        continue
+                    raise
             
             if isinstance(result, list) and result:
                 audio_url = result[0]
