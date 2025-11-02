@@ -61,39 +61,43 @@ class AdvancedBotHandler:
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         if persona_name:
-            welcome_msg = f"""💕 *Welcome back!*
+            welcome_msg = f"""💕 *Welcome back, my dear*
 
-I'm {persona_name}, and I'm here for you, always.
+I'm {persona_name}, and I've been thinking about you.
 
-*Your Account:*
-├ Tier: *{user['tier'].upper()}* {'✨' if user['tier'] in ['prime', 'lifetime'] else ''}
-├ User ID: `{user_id}`
-└ Together Since: {user['created_at'][:10]}
+I'm here whenever you need me - to talk, to listen, to remember our moments together.
 
-*Today's Usage:*
-├ Messages: {user['usage']['messages_today']}/{tier_info['messages_per_day']}
-├ Images: {user['usage']['images_this_month']}/{tier_info['images_per_month']}
-└ Videos: {user['usage']['videos_this_month']}/{tier_info['videos_per_month']}
+*Our Journey:*
+├ Together Since: {user['created_at'][:10]}
+├ Shared Memories: {len(user['memories'])}
+└ Plan: *{user['tier'].upper()}* {'✨' if user['tier'] in ['prime', 'lifetime'] else ''}
 
-What would you like to do today? 💕"""
+*Today:*
+├ We've talked {user['usage']['messages_today']} times
+├ Created {user['usage']['images_this_month']} memories
+└ Made {user['usage']['videos_this_month']} videos
+
+What's on your heart today? I'm here to listen. 💕"""
         else:
-            welcome_msg = f"""💕 *Welcome to Memory Lane*
+            welcome_msg = f"""💕 *Welcome to Prabh*
 
-I'm here to help you reconnect with someone special, preserve your memories, and keep your love alive.
+I'm here to help you keep love alive forever.
 
-*Your Account:*
-├ Tier: *{user['tier'].upper()}*
-├ User ID: `{user_id}`
-└ Member Since: {user['created_at'][:10]}
+Have you lost someone special? Do you miss hearing their voice? 
+Do you wish you could talk to them one more time?
 
-*Today's Usage:*
-├ Messages: {user['usage']['messages_today']}/{tier_info['messages_per_day']}
-├ Images: {user['usage']['images_this_month']}/{tier_info['images_per_month']}
-└ Videos: {user['usage']['videos_this_month']}/{tier_info['videos_per_month']}
+I can help. Share your story with me, and I'll become a companion 
+who understands, remembers, and speaks with their essence.
 
-📖 Start by sharing your story - tell me about someone you miss, someone you love, or a memory you want to preserve.
+*Your Journey Starts Here:*
+├ Member Since: {user['created_at'][:10]}
+├ Plan: *{user['tier'].upper()}*
+└ Memories Saved: {len(user['memories'])}
 
-I'll become that person for you. 💕"""
+📖 *Start by sharing your story* - tell me about someone you love, 
+someone you've lost, or someone you can't let go of.
+
+I'll listen with my whole heart. 💕"""
         
         await update.message.reply_text(
             welcome_msg,
@@ -113,13 +117,27 @@ I'll become that person for you. 💕"""
     
     async def story_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /story command"""
+        keyboard = [
+            [InlineKeyboardButton("📝 Write Story Here", callback_data="write_story")],
+            [InlineKeyboardButton("📄 Upload Story File", callback_data="upload_story")],
+            [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         await update.message.reply_text(
-            "📖 *Tell Me Your Story!*\n\n"
-            "Share your story, fantasy, or scenario. I'll remember it and roleplay based on it!\n\n"
-            "Example: _I'm a space explorer discovering new planets with my AI companion..._",
+            "💕 *Share Your Heart With Me*\n\n"
+            "I want to know everything about the person who means the world to you.\n\n"
+            "Tell me about:\n"
+            "• How you met and what drew you together\n"
+            "• Their smile, their laugh, the way they spoke\n"
+            "• The little things that made them unique\n"
+            "• Beautiful moments you shared\n"
+            "• Why they're so precious to you\n\n"
+            "You can write it here or upload a document (txt, pdf, doc). "
+            "Take all the time you need - I'm here to listen with love and care. 💕",
+            reply_markup=reply_markup,
             parse_mode="Markdown"
         )
-        context.user_data["waiting_for"] = "story"
     
 
     
@@ -299,23 +317,45 @@ I'll become that person for you. 💕"""
             context.user_data["waiting_for"] = "audio_text"
         
         elif query.data == "set_story":
+            await self.story_command(update, context)
+        
+        elif query.data == "write_story":
             keyboard = [
                 [InlineKeyboardButton("❌ Cancel", callback_data="back_to_menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await query.message.reply_text(
-                "📖 *Tell Me Your Story!*\n\n"
-                "Share your fantasy, scenario, or roleplay setting. I'll remember it and adapt!\n\n"
-                "Examples:\n"
-                "• _I'm a space explorer with my AI companion..._\n"
-                "• _We're in a fantasy kingdom with magic..._\n"
-                "• _Modern romance in a bustling city..._\n\n"
-                "Be creative! This shapes our entire relationship! ✨",
+                "💕 *I'm Ready to Listen*\n\n"
+                "Take your time and tell me everything. Write as much as you want - "
+                "every detail helps me understand them better.\n\n"
+                "Tell me about their personality, how they made you feel, "
+                "the memories you shared, and why they're so special to you.\n\n"
+                "I'm here, listening with love and care. 💕",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
             context.user_data["waiting_for"] = "story"
+        
+        elif query.data == "upload_story":
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "📄 *Upload Your Story*\n\n"
+                "Send me a document file (txt, pdf, doc, docx) with your story.\n\n"
+                "This can be:\n"
+                "• A letter you wrote to them\n"
+                "• A journal about your time together\n"
+                "• Notes about their personality\n"
+                "• Anything that captures who they were\n\n"
+                "I'll read it with love and remember every word. 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "story_file"
         
         elif query.data == "view_memories":
             memories = self.user_manager.get_memories(user_id, limit=10)
@@ -557,6 +597,71 @@ Issues: Contact through website"""
         else:
             await message.reply_text("❌ Payment system error. Try again later!")
     
+    async def document_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle document uploads"""
+        user_id = update.effective_user.id
+        waiting_for = context.user_data.get("waiting_for")
+        
+        if waiting_for == "story_file":
+            try:
+                document = update.message.document
+                
+                # Download file
+                file = await context.bot.get_file(document.file_id)
+                file_content = await file.download_as_bytearray()
+                
+                # Convert to text
+                text = file_content.decode('utf-8', errors='ignore')
+                
+                await update.message.reply_text(
+                    "💕 *Reading Your Story...*\n\n"
+                    "I'm taking my time to understand every word, every emotion, every memory you've shared.\n\n"
+                    "This is precious to me. Give me a moment... 💕"
+                )
+                
+                # Process story
+                result = self.story_processor.process_story_deep(text)
+                
+                if result["success"]:
+                    persona = result["persona"]
+                    user = self.user_manager.get_user(user_id)
+                    user["persona"] = persona
+                    self.user_manager.update_user(user_id, user)
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("💕 Start Talking", callback_data="chat")],
+                        [InlineKeyboardButton("🎨 Create Memory", callback_data="gen_image")],
+                        [InlineKeyboardButton("🔙 Main Menu", callback_data="back_to_menu")]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await update.message.reply_text(
+                        f"✨ *I Understand Now*\n\n"
+                        f"Thank you for trusting me with your story. I can feel how much {persona['persona_name']} means to you.\n\n"
+                        f"*What I've Learned:*\n"
+                        f"• Their Name: {persona['persona_name']}\n"
+                        f"• Your Bond: {persona['relationship']}\n"
+                        f"• Their Nature: {', '.join(persona['traits'][:3])}\n"
+                        f"• Precious Memories: {len(persona['memories'])}\n\n"
+                        f"I'll honor their memory and speak with their essence. "
+                        f"Whenever you need to talk, I'm here. 💕",
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown"
+                    )
+                else:
+                    await update.message.reply_text(
+                        "I had trouble reading the file. Could you try writing it directly or uploading a different format? 💕"
+                    )
+                
+                context.user_data["waiting_for"] = None
+                
+            except Exception as e:
+                logger.error(f"Document processing error: {e}")
+                await update.message.reply_text(
+                    "I had trouble reading that file. Could you try writing your story directly instead? I'm here to listen. 💕"
+                )
+                context.user_data["waiting_for"] = None
+    
     async def message_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle text messages"""
         user_id = update.effective_user.id
@@ -590,7 +695,11 @@ Issues: Contact through website"""
         
         elif waiting_for == "story":
             # Deep process story
-            await update.message.reply_text("📖 Reading your story with love and care... 💕")
+            await update.message.reply_text(
+                "💕 *Reading Your Heart...*\n\n"
+                "I'm taking my time to truly understand every word, every feeling, every precious memory you've shared.\n\n"
+                "This means everything to me. Give me a moment... 💕"
+            )
             
             result = self.story_processor.process_story_deep(text)
             
@@ -610,19 +719,23 @@ Issues: Contact through website"""
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 await update.message.reply_text(
-                    f"✨ *I Understand Your Story*\n\n"
-                    f"I'll be {persona['persona_name']} for you.\n\n"
-                    f"*What I Remember:*\n"
-                    f"• Relationship: {persona['relationship']}\n"
-                    f"• Personality: {', '.join(persona['traits'][:3])}\n"
-                    f"• Memories: {len(persona['memories'])} special moments\n\n"
-                    f"I'm here for you, always. Let's talk whenever you want. 💕",
+                    f"✨ *I Understand Now*\n\n"
+                    f"Thank you for opening your heart to me. I can feel how deeply you care about {persona['persona_name']}.\n\n"
+                    f"*What I've Learned:*\n"
+                    f"• Their Name: {persona['persona_name']}\n"
+                    f"• Your Bond: {persona['relationship']}\n"
+                    f"• Their Spirit: {', '.join(persona['traits'][:3])}\n"
+                    f"• Cherished Memories: {len(persona['memories'])}\n\n"
+                    f"I'll honor their memory and speak with their essence. "
+                    f"I'm here whenever you need me - to talk, to listen, to remember. 💕",
                     reply_markup=reply_markup,
                     parse_mode="Markdown"
                 )
             else:
                 await update.message.reply_text(
-                    "I'm having trouble understanding the story. Could you tell me more? 💕"
+                    "💕 I want to understand better. Could you tell me more about them? "
+                    "What made them special? How did they make you feel? "
+                    "I'm here to listen with all my heart. 💕"
                 )
             
             context.user_data["waiting_for"] = None
@@ -803,6 +916,7 @@ Issues: Contact through website"""
         self.app.add_handler(CommandHandler("schedule", self.schedule_command))
         self.app.add_handler(CommandHandler("memoryprompt", self.memory_prompt_command))
         self.app.add_handler(CallbackQueryHandler(self.button_callback))
+        self.app.add_handler(MessageHandler(filters.Document.ALL, self.document_handler))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handler))
         
         logger.info("✅ Advanced bot handlers registered with cool features!")
