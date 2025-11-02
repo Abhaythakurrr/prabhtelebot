@@ -45,7 +45,6 @@ class Config:
         self.port = int(os.getenv("PORT", "8000"))
         
         # Feature flags
-        self.nsfw_enabled = os.getenv("NSFW_IMAGES_PREMIUM_ONLY", "true").lower() == "true"
         self.voice_enabled = os.getenv("VOICE_PREMIUM_LIFETIME_ONLY", "true").lower() == "true"
         
     def validate(self) -> bool:

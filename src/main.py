@@ -32,16 +32,15 @@ def run_website_thread():
 def main():
     """Main function"""
     logger.info("=" * 60)
-    logger.info("🚀 MY PRABH AI - REVOLUTIONARY AI COMPANION")
+    logger.info("💕 MEMORY LANE - KEEP LOVE ALIVE FOREVER")
     logger.info("=" * 60)
     logger.info("📊 Features:")
-    logger.info("   • 35+ AI Models")
-    logger.info("   • Deep Roleplay Engine")
-    logger.info("   • NSFW Content Support")
-    logger.info("   • Memory & Story System")
+    logger.info("   • Deep Story Processing")
+    logger.info("   • Persona-Based Conversations")
+    logger.info("   • Memory Preservation")
+    logger.info("   • Proactive Messaging")
     logger.info("   • Image/Video Generation")
-    logger.info("   • Proactive Conversations")
-    logger.info("   • Redis Real-time")
+    logger.info("   • Beautiful Website")
     logger.info("   • Payment Integration")
     logger.info("=" * 60)
     

@@ -1,5 +1,6 @@
 """
-Advanced Telegram Bot Handler with Roleplay, NSFW, Memories, and Monetization
+Advanced Telegram Bot Handler - Memory Lane
+Focused on love, memories, and emotional connection
 """
 
 import logging
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedBotHandler:
-    """Advanced bot with roleplay, NSFW, memories, and monetization"""
+    """Advanced bot for preserving love and memories"""
     
     def __init__(self):
         self.config = get_config()
@@ -110,32 +111,7 @@ I'll become that person for you. 💕"""
         )
         context.user_data["waiting_for"] = "story"
     
-    async def nsfw_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /nsfw command"""
-        user_id = update.effective_user.id
-        user = self.user_manager.get_user(user_id)
-        tier_info = self.user_manager.get_tier_info(user["tier"])
-        
-        if not tier_info["nsfw_enabled"]:
-            await update.message.reply_text(
-                "🔞 *NSFW Mode*\n\n"
-                "NSFW content requires Prime or Lifetime subscription!\n\n"
-                "Upgrade now: /premium",
-                parse_mode="Markdown"
-            )
-            return
-        
-        # Toggle NSFW
-        current = user["preferences"].get("nsfw_consent", False)
-        user["preferences"]["nsfw_consent"] = not current
-        self.user_manager.update_user(user_id, user)
-        
-        status = "ENABLED" if not current else "DISABLED"
-        await update.message.reply_text(
-            f"🔞 *NSFW Mode {status}*\n\n"
-            f"Adult content is now {'available' if not current else 'disabled'}.",
-            parse_mode="Markdown"
-        )
+
     
     async def premium_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /premium command"""
@@ -154,9 +130,9 @@ I'll become that person for you. 💕"""
             "• 50 images/month\n"
             "• 5 videos/month\n\n"
             "*PRIME (₹899/mo):*\n"
-            "• 500 images/month\n"
-            "• 50 videos/month\n"
-            "• 🔞 NSFW content\n"
+            "• Unlimited images/month\n"
+            "• 100 videos/month\n"
+            "• Voice calls (coming soon)\n"
             "• Proactive messages\n\n"
             "*LIFETIME (₹2999):*\n"
             "• Unlimited everything forever\n"
@@ -374,14 +350,15 @@ I'll become that person for you. 💕"""
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            nsfw_status = "✅ Enabled" if user['preferences'].get('nsfw_consent', False) else "❌ Disabled"
+            persona = user.get('persona')
+            persona_name = persona.get('persona_name', 'Not set') if persona else 'Not set'
             
-            stats_text = f"""📊 *Your Statistics*
+            stats_text = f"""📊 *Your Memory Lane*
 
 *Account Info:*
+├ Companion: *{persona_name}*
 ├ Tier: *{user['tier'].upper()}*
 ├ User ID: `{user_id}`
-├ NSFW: {nsfw_status}
 └ Member Since: {user['created_at'][:10]}
 
 *Usage This Month:*
@@ -393,7 +370,7 @@ I'll become that person for you. 💕"""
 *Features:*
 ├ Memory Slots: {len(user['memories'])}/{tier_info['memory_slots']}
 ├ Proactive Messages: {'✅' if tier_info['proactive_messages'] else '❌'}
-└ NSFW Access: {'✅' if tier_info['nsfw_enabled'] else '❌'}
+└ Voice Calls: {'✅' if tier_info.get('voice_calls', False) else '❌'}
 """
             
             await query.message.reply_text(
@@ -434,64 +411,6 @@ I'll become that person for you. 💕"""
                 parse_mode="Markdown"
             )
         
-        elif query.data == "toggle_nsfw":
-            user = self.user_manager.get_user(user_id)
-            tier_info = self.user_manager.get_tier_info(user["tier"])
-            
-            if not tier_info["nsfw_enabled"]:
-                keyboard = [
-                    [InlineKeyboardButton("💎 Upgrade to Prime", callback_data="premium")],
-                    [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await query.message.reply_text(
-                    "🔞 *NSFW Mode Locked*\n\n"
-                    "NSFW content requires Prime or Lifetime subscription!\n\n"
-                    "Features include:\n"
-                    "• Adult roleplay conversations\n"
-                    "• NSFW image generation\n"
-                    "• Explicit video content\n"
-                    "• No content restrictions\n\n"
-                    "Upgrade now to unlock! 🔥",
-                    reply_markup=reply_markup,
-                    parse_mode="Markdown"
-                )
-                return
-            
-            current = user["preferences"].get("nsfw_consent", False)
-            user["preferences"]["nsfw_consent"] = not current
-            self.user_manager.update_user(user_id, user)
-            
-            keyboard = [
-                [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            if not current:
-                status_msg = """🔞 *NSFW Mode ENABLED*
-
-Adult content is now available!
-
-You can now:
-✅ Generate NSFW images
-✅ Create adult videos
-✅ Have explicit roleplay conversations
-
-⚠️ You confirm you are 18+ years old."""
-            else:
-                status_msg = """🔞 *NSFW Mode DISABLED*
-
-Adult content is now restricted.
-
-All content will be SFW (Safe For Work)."""
-            
-            await query.message.reply_text(
-                status_msg,
-                reply_markup=reply_markup,
-                parse_mode="Markdown"
-            )
-        
         elif query.data == "help":
             keyboard = [
                 [InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]
@@ -502,22 +421,22 @@ All content will be SFW (Safe For Work)."""
 
 *Main Commands:*
 /start - Main menu
-/chat - Start chatting
-/story - Set your story
-/nsfw - Toggle NSFW mode
+/chat - Start talking
+/story - Share your story
 /premium - View pricing
 
 *How to Use:*
-1️⃣ Set your story for personalized roleplay
-2️⃣ Chat with me - I remember everything!
-3️⃣ Generate images, videos, audio
-4️⃣ Upgrade for unlimited access
+1️⃣ Share your story about someone special
+2️⃣ I become that person for you
+3️⃣ Chat anytime - I remember everything
+4️⃣ Create memory images and videos
+5️⃣ Upgrade for unlimited access
 
 *Tips:*
-💡 Be specific in prompts for better results
-💡 Your story shapes my personality
-💡 I remember our conversations
-💡 NSFW requires Prime subscription
+💡 Be detailed in your story for better persona
+💡 I reference our shared memories
+💡 I reach out to you proactively (Premium)
+💡 Create visual memories with images/videos
 
 *Support:*
 Website: Check /premium for link
@@ -702,7 +621,6 @@ Issues: Contact through website"""
         self.app.add_handler(CommandHandler("start", self.start_command))
         self.app.add_handler(CommandHandler("chat", self.chat_command))
         self.app.add_handler(CommandHandler("story", self.story_command))
-        self.app.add_handler(CommandHandler("nsfw", self.nsfw_command))
         self.app.add_handler(CommandHandler("premium", self.premium_command))
         self.app.add_handler(CallbackQueryHandler(self.button_callback))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handler))
