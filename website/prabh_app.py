@@ -33,6 +33,25 @@ def pricing():
     return Response(PRICING_HTML, mimetype='text/html')
 
 
+@app.route('/payment')
+def payment():
+    """Payment page"""
+    order_id = request.args.get('order_id')
+    user_id = request.args.get('user_id')
+    tier = request.args.get('tier')
+    
+    if not all([order_id, user_id, tier]):
+        return redirect('/pricing')
+    
+    payment_html = PAYMENT_HTML.format(
+        order_id=order_id,
+        user_id=user_id,
+        tier=tier,
+        razorpay_key=config.razorpay_key_id
+    )
+    return Response(payment_html, mimetype='text/html')
+
+
 @app.route('/dashboard')
 def dashboard():
     """User dashboard"""
@@ -279,6 +298,75 @@ PRICING_HTML = """
                 }
             });
         }
+    </script>
+</body>
+</html>
+"""
+
+PAYMENT_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payment - Prabh</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/prabh_style.css">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <div class="hero" style="min-height: 100vh;">
+        <div class="hero-content">
+            <h1 style="font-size: 3rem;">Complete Your Payment</h1>
+            <p class="tagline">You're one step away from keeping love alive forever 💕</p>
+            <button onclick="startPayment()" class="cta-button" style="margin-top: 40px;">
+                💳 Pay Now
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        function startPayment() {{
+            const options = {{
+                key: '{razorpay_key}',
+                order_id: '{order_id}',
+                currency: 'INR',
+                name: 'Prabh',
+                description: '{tier} Subscription',
+                handler: function(response) {{
+                    // Verify payment
+                    fetch('/api/verify-payment', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            user_id: '{user_id}',
+                            tier: '{tier}'
+                        }})
+                    }})
+                    .then(res => res.json())
+                    .then(result => {{
+                        if (result.success) {{
+                            alert('Payment successful! Your subscription is now active. Check the bot!');
+                            window.location.href = '/dashboard?user_id={user_id}';
+                        }} else {{
+                            alert('Payment verification failed. Please contact support.');
+                        }}
+                    }});
+                }},
+                theme: {{
+                    color: '#ff6b9d'
+                }}
+            }};
+            const rzp = new Razorpay(options);
+            rzp.open();
+        }}
+        
+        // Auto-start payment
+        window.onload = function() {{
+            setTimeout(startPayment, 1000);
+        }};
     </script>
 </body>
 </html>
