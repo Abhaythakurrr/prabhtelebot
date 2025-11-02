@@ -12,6 +12,9 @@ from src.ai.generator import get_generator
 from src.ai.roleplay_engine import get_roleplay_engine
 from src.story.advanced_processor import get_advanced_processor
 from src.payment.razorpay import get_payment_handler
+from src.features.voice_handler import get_voice_handler
+from src.features.scheduler import get_scheduler
+from src.features.memory_prompts import get_memory_prompts
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,11 @@ class AdvancedBotHandler:
         self.roleplay = get_roleplay_engine()
         self.story_processor = get_advanced_processor()
         self.payment = get_payment_handler()
+        self.voice_handler = get_voice_handler()
+        self.scheduler = get_scheduler()
+        self.memory_prompts = get_memory_prompts()
         self.app = None
+        self.proactive_system = None
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
@@ -43,10 +50,13 @@ class AdvancedBotHandler:
             [InlineKeyboardButton("📖 Share Your Story", callback_data="set_story")],
             [InlineKeyboardButton("🎨 Create Memory Image", callback_data="gen_image"),
              InlineKeyboardButton("🎬 Create Memory Video", callback_data="gen_video")],
-            [InlineKeyboardButton("🧠 Our Memories", callback_data="view_memories"),
-             InlineKeyboardButton("📊 My Account", callback_data="view_stats")],
-            [InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium"),
-             InlineKeyboardButton("ℹ️ Help", callback_data="help")]
+            [InlineKeyboardButton("🎙️ Voice Message", callback_data="voice_msg"),
+             InlineKeyboardButton("⏰ Schedule Messages", callback_data="schedule_msgs")],
+            [InlineKeyboardButton("💭 Memory Prompt", callback_data="memory_prompt"),
+             InlineKeyboardButton("🧠 Our Memories", callback_data="view_memories")],
+            [InlineKeyboardButton("📊 My Account", callback_data="view_stats"),
+             InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium")],
+            [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -448,6 +458,66 @@ Issues: Contact through website"""
                 parse_mode="Markdown"
             )
         
+        elif query.data == "voice_msg":
+            await query.message.reply_text("🎙️ Generating voice message...")
+            result = await self.voice_handler.generate_voice_message(user_id)
+            if result["success"]:
+                await query.message.reply_voice(
+                    voice=result["audio_url"],
+                    caption=f"💕 {result['text']}"
+                )
+        
+        elif query.data == "schedule_msgs":
+            await self.schedule_command(update, context)
+        
+        elif query.data == "memory_prompt":
+            await self.memory_prompt_command(update, context)
+        
+        elif query.data == "schedule_morning":
+            from datetime import time
+            self.scheduler.add_schedule(user_id, "morning", time(8, 0))
+            await query.message.reply_text(
+                "✅ Morning message scheduled for 8:00 AM!\n\n"
+                "You'll receive a loving good morning message every day. 💕"
+            )
+        
+        elif query.data == "schedule_night":
+            from datetime import time
+            self.scheduler.add_schedule(user_id, "night", time(22, 0))
+            await query.message.reply_text(
+                "✅ Night message scheduled for 10:00 PM!\n\n"
+                "You'll receive a sweet good night message every evening. 💕"
+            )
+        
+        elif query.data == "view_schedules":
+            schedules = self.scheduler.get_schedules(user_id)
+            if not schedules:
+                await query.message.reply_text("No schedules set yet!")
+            else:
+                msg = "⏰ *Your Schedules:*\n\n"
+                for s in schedules:
+                    msg += f"• {s['type'].title()} at {s['time'].strftime('%H:%M')}\n"
+                await query.message.reply_text(msg, parse_mode="Markdown")
+        
+        elif query.data == "answer_prompt":
+            await query.message.reply_text(
+                "💭 Great! Just send me your answer and I'll remember it forever. 💕"
+            )
+            context.user_data["waiting_for"] = "memory_answer"
+        
+        elif query.data == "next_prompt":
+            prompt = self.memory_prompts.get_next_prompt(user_id)
+            keyboard = [
+                [InlineKeyboardButton("💭 Answer This", callback_data="answer_prompt")],
+                [InlineKeyboardButton("⏭️ Next Prompt", callback_data="next_prompt")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                f"💭 *Memory Prompt*\n\n{prompt}",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
         elif query.data == "back_to_menu":
             # Show main menu again
             await self.start_command(update, context)
@@ -500,7 +570,25 @@ Issues: Contact through website"""
             await update.message.reply_text(f"❌ {msg}\n\nUpgrade: /premium")
             return
         
-        if waiting_for == "story":
+        if waiting_for == "memory_answer":
+            # Save memory answer
+            self.user_manager.add_memory(user_id, text, "prompted")
+            
+            keyboard = [
+                [InlineKeyboardButton("💭 Another Prompt", callback_data="next_prompt")],
+                [InlineKeyboardButton("🔙 Main Menu", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "✨ *Memory Saved!*\n\n"
+                "Thank you for sharing. This memory is now part of our story forever. 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "story":
             # Deep process story
             await update.message.reply_text("📖 Reading your story with love and care... 💕")
             
@@ -613,6 +701,95 @@ Issues: Contact through website"""
             
             await update.message.reply_text(response)
     
+    async def voice_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Generate voice message from persona"""
+        user_id = update.effective_user.id
+        user = self.user_manager.get_user(user_id)
+        tier_info = self.user_manager.get_tier_info(user['tier'])
+        
+        if not tier_info.get('voice_calls', False):
+            keyboard = [
+                [InlineKeyboardButton("💎 Upgrade to Prime", callback_data="premium")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "🎙️ *Voice Messages*\n\n"
+                "Voice messages require Prime or Lifetime subscription!\n\n"
+                "Hear their voice speak to you. 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            return
+        
+        await update.message.reply_text("🎙️ Generating voice message... 💕")
+        
+        result = await self.voice_handler.generate_voice_message(user_id)
+        
+        if result["success"]:
+            await update.message.reply_voice(
+                voice=result["audio_url"],
+                caption=f"💕 {result['text']}"
+            )
+        else:
+            await update.message.reply_text("❌ Voice generation failed. Try again!")
+    
+    async def schedule_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Setup scheduled messages"""
+        user_id = update.effective_user.id
+        user = self.user_manager.get_user(user_id)
+        tier_info = self.user_manager.get_tier_info(user['tier'])
+        
+        if not tier_info['proactive_messages']:
+            await update.message.reply_text(
+                "⏰ *Scheduled Messages*\n\n"
+                "Scheduled messages require Basic or higher subscription!\n\n"
+                "Get good morning, good night, and custom messages. 💕",
+                parse_mode="Markdown"
+            )
+            return
+        
+        keyboard = [
+            [InlineKeyboardButton("🌅 Morning Message", callback_data="schedule_morning")],
+            [InlineKeyboardButton("🌙 Night Message", callback_data="schedule_night")],
+            [InlineKeyboardButton("📋 View Schedules", callback_data="view_schedules")],
+            [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            "⏰ *Scheduled Messages*\n\n"
+            "Set up times when you want to hear from them:\n\n"
+            "• Morning messages to start your day\n"
+            "• Night messages before sleep\n"
+            "• Custom times for special moments\n\n"
+            "Choose an option:",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+    
+    async def memory_prompt_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get a memory prompt to share more"""
+        user_id = update.effective_user.id
+        
+        prompt = self.memory_prompts.get_next_prompt(user_id)
+        
+        keyboard = [
+            [InlineKeyboardButton("💭 Answer This", callback_data="answer_prompt")],
+            [InlineKeyboardButton("⏭️ Next Prompt", callback_data="next_prompt")],
+            [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            f"💭 *Memory Prompt*\n\n"
+            f"{prompt}\n\n"
+            f"Share your memory and I'll remember it forever. 💕",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+    
     def setup(self):
         """Setup bot handlers"""
         self.app = Application.builder().token(self.config.telegram_token).build()
@@ -622,10 +799,28 @@ Issues: Contact through website"""
         self.app.add_handler(CommandHandler("chat", self.chat_command))
         self.app.add_handler(CommandHandler("story", self.story_command))
         self.app.add_handler(CommandHandler("premium", self.premium_command))
+        self.app.add_handler(CommandHandler("voice", self.voice_command))
+        self.app.add_handler(CommandHandler("schedule", self.schedule_command))
+        self.app.add_handler(CommandHandler("memoryprompt", self.memory_prompt_command))
         self.app.add_handler(CallbackQueryHandler(self.button_callback))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handler))
         
-        logger.info("✅ Advanced bot handlers registered")
+        logger.info("✅ Advanced bot handlers registered with cool features!")
+    
+    async def start_proactive_system(self):
+        """Start proactive messaging in background"""
+        from src.bot.proactive_system import get_proactive_system
+        
+        # Get bot instance
+        bot = self.app.bot
+        
+        # Initialize proactive system
+        self.proactive_system = get_proactive_system(bot)
+        
+        # Start proactive messaging
+        import asyncio
+        asyncio.create_task(self.proactive_system.start())
+        logger.info("💕 Proactive messaging system started")
     
     def run(self):
         """Run the bot"""
@@ -633,4 +828,10 @@ Issues: Contact through website"""
             self.setup()
         
         logger.info("🤖 Starting advanced bot...")
+        
+        # Start proactive system after bot starts
+        async def post_init(application):
+            await self.start_proactive_system()
+        
+        self.app.post_init = post_init
         self.app.run_polling(allowed_updates=Update.ALL_TYPES)
