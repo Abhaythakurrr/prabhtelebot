@@ -19,33 +19,33 @@ class UserManager:
     
     TIERS = {
         "free": {
-            "messages_per_day": 10,
-            "images_per_month": 1,
+            "messages_per_day": 20,
+            "images_per_month": 3,
             "videos_per_month": 0,
-            "audio_per_month": 5,
-            "nsfw_enabled": False,
-            "memory_slots": 10,
-            "proactive_messages": False
+            "audio_per_month": 10,
+            "memory_slots": 20,
+            "proactive_messages": False,
+            "voice_calls": False
         },
         "basic": {
             "price": 299,
             "messages_per_day": 999999,
-            "images_per_month": 50,
-            "videos_per_month": 5,
-            "audio_per_month": 100,
-            "nsfw_enabled": False,
-            "memory_slots": 50,
-            "proactive_messages": True
+            "images_per_month": 100,
+            "videos_per_month": 10,
+            "audio_per_month": 200,
+            "memory_slots": 100,
+            "proactive_messages": True,
+            "voice_calls": False
         },
         "prime": {
             "price": 899,
             "messages_per_day": 999999,
-            "images_per_month": 500,
-            "videos_per_month": 50,
-            "audio_per_month": 500,
-            "nsfw_enabled": True,
-            "memory_slots": 200,
-            "proactive_messages": True
+            "images_per_month": 999999,
+            "videos_per_month": 100,
+            "audio_per_month": 999999,
+            "memory_slots": 500,
+            "proactive_messages": True,
+            "voice_calls": True
         },
         "lifetime": {
             "price": 2999,
@@ -53,9 +53,9 @@ class UserManager:
             "images_per_month": 999999,
             "videos_per_month": 999999,
             "audio_per_month": 999999,
-            "nsfw_enabled": True,
             "memory_slots": 999999,
-            "proactive_messages": True
+            "proactive_messages": True,
+            "voice_calls": True
         }
     }
     
