@@ -4,6 +4,7 @@ Focused on love, memories, and emotional connection
 """
 
 import logging
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from src.core.config import get_config
@@ -299,7 +300,27 @@ Just start chatting with me, or use the buttons below to explore what we can do 
             context.user_data["waiting_for"] = "audio_text"
         
         elif query.data == "set_story":
-            await self.story_command(update, context)
+            keyboard = [
+                [InlineKeyboardButton("📝 Write Story Here", callback_data="write_story")],
+                [InlineKeyboardButton("📄 Upload Story File", callback_data="upload_story")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "💕 *Share Your Heart With Me*\n\n"
+                "I want to know everything about the person who means the world to you.\n\n"
+                "Tell me about:\n"
+                "• How you met and what drew you together\n"
+                "• Their smile, their laugh, the way they spoke\n"
+                "• The little things that made them unique\n"
+                "• Beautiful moments you shared\n"
+                "• Why they're so precious to you\n\n"
+                "You can write it here or upload a *.txt file*. "
+                "Take all the time you need - I'm here to listen with love and care. 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
         
         elif query.data == "write_story":
             keyboard = [
@@ -999,8 +1020,31 @@ Issues: Contact through website"""
             context.user_data["waiting_for"] = None
         
         elif waiting_for == "reminder":
-            # Parse reminder
-            result = self.cool_features.set_reminder(user_id, text, "in 1 hour")
+            # Parse reminder - extract what and when from text
+            import re
+            
+            # Try to find time indicators
+            time_patterns = [
+                r'in (\d+) (second|minute|hour|day|week)s?',
+                r'after (\d+) (second|minute|hour|day|week)s?',
+                r'(tomorrow)',
+                r'(\d+) (second|minute|hour|day|week)s? from now'
+            ]
+            
+            when_text = "in 1 hour"  # default
+            reminder_text = text
+            
+            for pattern in time_patterns:
+                match = re.search(pattern, text.lower())
+                if match:
+                    when_text = match.group(0)
+                    # Remove the time part from reminder text
+                    reminder_text = text.replace(match.group(0), '').strip()
+                    # Remove common words
+                    reminder_text = reminder_text.replace('remind me to', '').replace('remind me', '').strip()
+                    break
+            
+            result = self.cool_features.set_reminder(user_id, reminder_text, when_text)
             if result["success"]:
                 await update.message.reply_text(result["message"])
             else:
@@ -1250,7 +1294,34 @@ Issues: Contact through website"""
         # Start proactive messaging
         import asyncio
         asyncio.create_task(self.proactive_system.start())
+        asyncio.create_task(self.check_reminders_loop())
         logger.info("💕 Proactive messaging system started")
+    
+    async def check_reminders_loop(self):
+        """Check for due reminders every minute"""
+        import asyncio
+        
+        while True:
+            try:
+                # Check all users for due reminders
+                for user_id in list(self.cool_features.reminders.keys()):
+                    due_reminders = self.cool_features.check_due_reminders(user_id)
+                    
+                    for reminder in due_reminders:
+                        try:
+                            await self.app.bot.send_message(
+                                chat_id=user_id,
+                                text=f"⏰ *Reminder!*\n\n{reminder['text']} 💕",
+                                parse_mode="Markdown"
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to send reminder to {user_id}: {e}")
+                
+                # Check every 30 seconds
+                await asyncio.sleep(30)
+            except Exception as e:
+                logger.error(f"Reminder check error: {e}")
+                await asyncio.sleep(60)
     
     def run(self):
         """Run the bot"""

@@ -59,13 +59,9 @@ class RoleplayEngine:
                 "content": message
             })
             
-            # Generate with GPT using better parameters for more human responses
+            # Generate with GPT
             model = self.bytez.model("openai/gpt-4o-mini")
-            result = model.run(
-                conversation_messages,
-                temperature=0.9,  # Higher temperature for more creative, human-like responses
-                max_tokens=200    # Allow longer responses when needed
-            )
+            result = model.run(conversation_messages)
             
             # Extract content from response
             if hasattr(result, 'output') and result.output:
@@ -213,7 +209,7 @@ Be authentic and loving. Show real emotion.
             ]
             
             model = self.bytez.model("openai/gpt-4o-mini")
-            result = model.run(messages, temperature=0.9)
+            result = model.run(messages)
             
             # Extract content from response
             if hasattr(result, 'output') and result.output:

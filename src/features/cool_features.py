@@ -80,21 +80,29 @@ class CoolFeatures:
     
     def _parse_time(self, when: str) -> datetime:
         """Parse time string into datetime"""
+        from datetime import datetime, timedelta
+        import re
+        
         when = when.lower().strip()
         now = datetime.now()
         
+        # Extract numbers from the string
+        numbers = re.findall(r'\d+', when)
+        num = int(numbers[0]) if numbers else 1
+        
         # Handle common patterns
-        if "minute" in when:
-            minutes = int(''.join(filter(str.isdigit, when)))
-            return now + timedelta(minutes=minutes)
+        if "second" in when:
+            return now + timedelta(seconds=num)
+        elif "minute" in when:
+            return now + timedelta(minutes=num)
         elif "hour" in when:
-            hours = int(''.join(filter(str.isdigit, when)))
-            return now + timedelta(hours=hours)
+            return now + timedelta(hours=num)
         elif "tomorrow" in when:
             return now + timedelta(days=1)
         elif "day" in when:
-            days = int(''.join(filter(str.isdigit, when)))
-            return now + timedelta(days=days)
+            return now + timedelta(days=num)
+        elif "week" in when:
+            return now + timedelta(weeks=num)
         else:
             # Default to 1 hour
             return now + timedelta(hours=1)
