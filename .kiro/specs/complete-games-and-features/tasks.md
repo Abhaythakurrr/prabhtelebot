@@ -52,11 +52,14 @@
 
 ## Phase 2: Advanced Games
 
+
 - [ ] 2. Add Tic-Tac-Toe Game
   - Create TicTacToe class in games.py
   - Implement 3x3 board with emoji display
   - Add move validation
   - Implement win/draw detection
+
+
   - Add simple AI opponent
   - _Requirements: 2.1, 2.2, 2.4_
 
@@ -82,6 +85,7 @@
 - [ ] 2.4 Implement Chess Move Notation
   - Support algebraic notation (e2e4)
   - Validate move format
+
   - Show available moves on request
   - _Requirements: 2.3_
 

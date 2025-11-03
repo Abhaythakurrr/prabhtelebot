@@ -643,24 +643,50 @@ Issues: Contact through website"""
             )
         
         elif query.data == "set_reminder":
-            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="reminders_menu")]]
+            keyboard = [
+                [InlineKeyboardButton("💊 Health", callback_data="reminder_cat_health"),
+                 InlineKeyboardButton("💼 Work", callback_data="reminder_cat_work")],
+                [InlineKeyboardButton("💕 Personal", callback_data="reminder_cat_personal"),
+                 InlineKeyboardButton("⏰ General", callback_data="reminder_cat_general")],
+                [InlineKeyboardButton("❌ Cancel", callback_data="reminders_menu")]
+            ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.message.reply_text(
                 "⏰ *Set a Reminder*\n\n"
-                "Tell me what to remind you about and when!\n\n"
-                "Example: _Remind me to call mom in 2 hours_\n"
-                "Example: _Remind me about the meeting tomorrow_",
+                "First, choose a category:",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
+        
+        elif query.data.startswith("reminder_cat_"):
+            category = query.data.replace("reminder_cat_", "")
+            context.user_data["reminder_category"] = category
             context.user_data["waiting_for"] = "reminder"
+            
+            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="reminders_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            cat_names = {"health": "💊 Health", "work": "💼 Work", "personal": "💕 Personal", "general": "⏰ General"}
+            
+            await query.message.reply_text(
+                f"⏰ *{cat_names.get(category, 'Reminder')}*\n\n"
+                "Tell me what to remind you about and when!\n\n"
+                "Examples:\n"
+                "• _Take medicine in 2 hours_\n"
+                "• _Meeting tomorrow at 3pm_\n"
+                "• _Call mom in 30 minutes_\n\n"
+                "For recurring: Add 'daily', 'weekly', or 'monthly'\n"
+                "• _Take vitamins daily_",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
         
         elif query.data == "view_reminders":
-            reminders = self.cool_features.get_reminders(user_id)
+            by_category = self.cool_features.get_reminders_by_category(user_id)
             keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="reminders_menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            if not reminders:
+            if not by_category:
                 await query.message.reply_text(
                     "📋 *Your Reminders*\n\nNo active reminders! Set one with /remind 💕",
                     reply_markup=reply_markup,
@@ -668,9 +694,18 @@ Issues: Contact through website"""
                 )
             else:
                 msg = "📋 *Your Reminders*\n\n"
-                for r in reminders:
-                    time = datetime.fromisoformat(r["time"])
-                    msg += f"• {r['text']}\n  ⏰ {time.strftime('%b %d, %I:%M %p')}\n\n"
+                
+                cat_names = {"health": "💊 Health", "work": "💼 Work", "personal": "💕 Personal", "general": "⏰ General"}
+                
+                for category, reminders in by_category.items():
+                    msg += f"*{cat_names.get(category, category.title())}*\n"
+                    for r in reminders:
+                        time = datetime.fromisoformat(r["time"])
+                        recurring_badge = " 🔄" if r.get("recurring") else ""
+                        msg += f"• {r['text']}{recurring_badge}\n"
+                        msg += f"  ⏰ {time.strftime('%b %d, %I:%M %p')}\n"
+                    msg += "\n"
+                
                 await query.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
         
         elif query.data == "daily_challenge":
@@ -1118,8 +1153,20 @@ Issues: Contact through website"""
             context.user_data["waiting_for"] = None
         
         elif waiting_for == "reminder":
-            # Parse reminder - extract what and when from text
+            # Parse reminder - extract what, when, and recurring from text
             import re
+            
+            # Check for recurring
+            recurring = None
+            if "daily" in text.lower():
+                recurring = "daily"
+                text = text.lower().replace("daily", "").strip()
+            elif "weekly" in text.lower():
+                recurring = "weekly"
+                text = text.lower().replace("weekly", "").strip()
+            elif "monthly" in text.lower():
+                recurring = "monthly"
+                text = text.lower().replace("monthly", "").strip()
             
             # Try to find time indicators
             time_patterns = [
@@ -1149,12 +1196,17 @@ Issues: Contact through website"""
             # Clean up any remaining artifacts
             reminder_text = reminder_text.strip()
             
-            result = self.cool_features.set_reminder(user_id, reminder_text, when_text)
+            # Get category from context
+            category = context.user_data.get("reminder_category", "general")
+            
+            result = self.cool_features.set_reminder(user_id, reminder_text, when_text, category, recurring)
             if result["success"]:
                 await update.message.reply_text(result["message"])
             else:
                 await update.message.reply_text("I'll try to remember that! 💕")
+            
             context.user_data["waiting_for"] = None
+            context.user_data["reminder_category"] = None
         
         elif waiting_for == "advice":
             await update.message.reply_text("💭 Let me think about this...")

@@ -24,8 +24,8 @@ class CoolFeatures:
     
     # ==================== REMINDERS ====================
     
-    def set_reminder(self, user_id: int, reminder_text: str, when: str) -> Dict[str, Any]:
-        """Set a reminder for the user"""
+    def set_reminder(self, user_id: int, reminder_text: str, when: str, category: str = "general", recurring: str = None) -> Dict[str, Any]:
+        """Set a reminder for the user with category and recurrence support"""
         try:
             # Parse when (e.g., "in 1 hour", "tomorrow", "in 30 minutes")
             remind_time = self._parse_time(when)
@@ -33,20 +33,35 @@ class CoolFeatures:
             if user_id not in self.reminders:
                 self.reminders[user_id] = []
             
+            # Category icons
+            category_icons = {
+                "health": "💊",
+                "work": "💼",
+                "personal": "💕",
+                "general": "⏰"
+            }
+            
             reminder = {
                 "id": len(self.reminders[user_id]) + 1,
                 "text": reminder_text,
                 "time": remind_time.isoformat(),
                 "created": datetime.now().isoformat(),
-                "completed": False
+                "completed": False,
+                "category": category,
+                "icon": category_icons.get(category, "⏰"),
+                "recurring": recurring  # "daily", "weekly", "monthly", None
             }
             
             self.reminders[user_id].append(reminder)
             
+            recurring_text = ""
+            if recurring:
+                recurring_text = f" (repeats {recurring})"
+            
             return {
                 "success": True,
                 "reminder": reminder,
-                "message": f"Got it! I'll remind you about '{reminder_text}' {when} 💕"
+                "message": f"Got it! I'll remind you about '{reminder_text}' {when}{recurring_text} 💕"
             }
         except Exception as e:
             logger.error(f"Set reminder error: {e}")
@@ -55,11 +70,33 @@ class CoolFeatures:
                 "error": str(e)
             }
     
-    def get_reminders(self, user_id: int) -> List[Dict]:
-        """Get all active reminders for user"""
+    def get_reminders(self, user_id: int, category: str = None) -> List[Dict]:
+        """Get all active reminders for user, optionally filtered by category"""
         if user_id not in self.reminders:
             return []
-        return [r for r in self.reminders[user_id] if not r["completed"]]
+        
+        active = [r for r in self.reminders[user_id] if not r["completed"]]
+        
+        if category:
+            active = [r for r in active if r.get("category") == category]
+        
+        return active
+    
+    def get_reminders_by_category(self, user_id: int) -> Dict[str, List[Dict]]:
+        """Get reminders grouped by category"""
+        if user_id not in self.reminders:
+            return {}
+        
+        active = [r for r in self.reminders[user_id] if not r["completed"]]
+        
+        by_category = {}
+        for reminder in active:
+            cat = reminder.get("category", "general")
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(reminder)
+        
+        return by_category
     
     def check_due_reminders(self, user_id: int) -> List[Dict]:
         """Check for reminders that are due"""
@@ -73,7 +110,23 @@ class CoolFeatures:
             if not reminder["completed"]:
                 remind_time = datetime.fromisoformat(reminder["time"])
                 if now >= remind_time:
-                    reminder["completed"] = True
+                    # Handle recurring reminders
+                    if reminder.get("recurring"):
+                        # Schedule next occurrence
+                        if reminder["recurring"] == "daily":
+                            next_time = remind_time + timedelta(days=1)
+                        elif reminder["recurring"] == "weekly":
+                            next_time = remind_time + timedelta(weeks=1)
+                        elif reminder["recurring"] == "monthly":
+                            next_time = remind_time + timedelta(days=30)
+                        else:
+                            next_time = None
+                        
+                        if next_time:
+                            reminder["time"] = next_time.isoformat()
+                    else:
+                        reminder["completed"] = True
+                    
                     due.append(reminder)
         
         return due
