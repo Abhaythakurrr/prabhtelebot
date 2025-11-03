@@ -18,6 +18,7 @@ from src.features.scheduler import get_scheduler
 from src.features.memory_prompts import get_memory_prompts
 from src.features.cool_features import get_cool_features
 from src.features.games import get_games_engine
+from src.features.language_support import get_language_support
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class AdvancedBotHandler:
         self.memory_prompts = get_memory_prompts()
         self.cool_features = get_cool_features()
         self.games_engine = get_games_engine()
+        self.language_support = get_language_support()
         self.app = None
         self.proactive_system = None
     
@@ -50,6 +52,10 @@ class AdvancedBotHandler:
         persona = user.get('persona')
         persona_name = persona.get('persona_name', 'someone special') if persona else None
         
+        # Get user's current language
+        current_lang = self.language_support.get_language(user_id)
+        lang_emoji = {"english": "🇬🇧", "hinglish": "🇮🇳", "punjabi": "🇮🇳"}
+        
         keyboard = [
             [InlineKeyboardButton("💕 Talk to Me", callback_data="chat")],
             [InlineKeyboardButton("🎮 Fun & Games", callback_data="fun_menu"),
@@ -60,9 +66,10 @@ class AdvancedBotHandler:
              InlineKeyboardButton("🎬 Create Video", callback_data="gen_video")],
             [InlineKeyboardButton("📖 Share Story", callback_data="set_story"),
              InlineKeyboardButton("🧠 Memories", callback_data="view_memories")],
-            [InlineKeyboardButton("📊 My Account", callback_data="view_stats"),
-             InlineKeyboardButton("💎 Upgrade", callback_data="premium")],
-            [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
+            [InlineKeyboardButton(f"{lang_emoji.get(current_lang, '🌐')} Language", callback_data="language_menu"),
+             InlineKeyboardButton("📊 My Account", callback_data="view_stats")],
+            [InlineKeyboardButton("💎 Upgrade", callback_data="premium"),
+             InlineKeyboardButton("ℹ️ Help", callback_data="help")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -824,6 +831,41 @@ Issues: Contact through website"""
             keyboard = [[InlineKeyboardButton("🎮 Play Again", callback_data="fun_menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.message.reply_text(result["message"], reply_markup=reply_markup)
+        
+        # ==================== LANGUAGE SUPPORT ====================
+        
+        elif query.data == "language_menu":
+            current_lang = self.language_support.get_language(user_id)
+            keyboard = [
+                [InlineKeyboardButton("🇬🇧 English" + (" ✓" if current_lang == "english" else ""), 
+                                    callback_data="lang_english")],
+                [InlineKeyboardButton("🇮🇳 Hinglish (Hindi + English)" + (" ✓" if current_lang == "hinglish" else ""), 
+                                    callback_data="lang_hinglish")],
+                [InlineKeyboardButton("🇮🇳 Punjabi (Roman)" + (" ✓" if current_lang == "punjabi" else ""), 
+                                    callback_data="lang_punjabi")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "🌐 *Choose Your Language*\n\n"
+                "Select the language you want me to speak in! 💕\n\n"
+                "मैं हिंग्लिश में भी बात कर सकती हूँ!\n"
+                "Main Punjabi vich vi gal kar sakdi aan!",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data.startswith("lang_"):
+            language = query.data.replace("lang_", "")
+            result = self.language_support.set_language(user_id, language)
+            
+            keyboard = [[InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                result["message"],
+                reply_markup=reply_markup
+            )
         
         elif query.data == "back_to_menu":
             # Show main menu again

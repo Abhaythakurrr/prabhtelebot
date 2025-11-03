@@ -30,9 +30,15 @@ class RoleplayEngine:
             # Add time context for more natural responses
             time_of_day = self.get_time_context()
             
+            # Get language preference
+            from src.features.language_support import get_language_support
+            lang_support = get_language_support()
+            lang_addition = lang_support.get_language_prompt_addition(user_id)
+            
             # Build context
             context = self._build_context(story, memories, nsfw_mode)
             context += f"\n\nCURRENT TIME CONTEXT: It's {time_of_day} right now. Be naturally aware of this in your responses."
+            context += lang_addition
             
             # Build conversation history from recent memories
             conversation_messages = [{"role": "system", "content": context}]

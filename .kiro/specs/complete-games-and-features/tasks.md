@@ -2,7 +2,9 @@
 
 ## Phase 1: Games Integration & Bug Fixes
 
-- [-] 1. Integrate Games Engine with Bot Handler
+- [x] 1. Integrate Games Engine with Bot Handler
+
+
 
 
   - Import games engine in advanced_handler.py
@@ -10,27 +12,32 @@
   - Create games menu with inline keyboard buttons
   - _Requirements: 1.1, 1.2_
 
+
 - [ ] 1.1 Add Game Menu Buttons
   - Replace simple dice/coin with game menu
   - Add buttons for: Word Guess, Trivia, Number Guess, Riddles, Would You Rather
   - Add "Game Stats" and "Quit Game" buttons
   - _Requirements: 1.1_
 
+
 - [ ] 1.2 Implement Game Command Handlers
   - Add callback handlers for each game type
   - Route game moves to games engine
   - Display game responses with proper formatting
   - Handle game state transitions
+
   - _Requirements: 1.2, 1.3_
 
 - [ ] 1.3 Add Game State Management
   - Check for active games before starting new ones
   - Allow users to resume or quit active games
+
   - Clear game state on completion
   - _Requirements: 1.5_
 
 - [ ] 1.4 Implement Game Statistics Display
   - Show user's game stats on request
+
   - Display win rates and achievements
   - Format stats message with emojis
   - _Requirements: 1.4, 6.1, 6.2_
