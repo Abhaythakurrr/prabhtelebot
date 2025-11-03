@@ -86,16 +86,19 @@
   - Support algebraic notation (e2e4)
   - Validate move format
 
+
   - Show available moves on request
   - _Requirements: 2.3_
 
 - [ ]* 2.5 Add Chess AI
   - Implement basic chess AI
   - Add difficulty levels
+
   - Optimize for performance
   - _Requirements: 2.5_
 
 ## Phase 3: Feature Enhancements
+
 
 - [ ] 3. Enhance Reminder System
   - Verify AI-generated caring messages work
