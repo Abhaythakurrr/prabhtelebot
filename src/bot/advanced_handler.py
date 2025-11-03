@@ -1309,11 +1309,46 @@ Issues: Contact through website"""
                     
                     for reminder in due_reminders:
                         try:
+                            # Generate personalized reminder message
+                            reminder_text = reminder['text']
+                            
+                            # Get user persona for more personal touch
+                            user = self.user_manager.get_user(user_id)
+                            persona = user.get('persona')
+                            persona_name = persona.get('persona_name', 'Prabh') if persona else 'Prabh'
+                            
+                            # Make it more personal and natural - as if Prabh is talking
+                            personal_messages = [
+                                f"Hey! It's {persona_name} here. Time to {reminder_text}! 💕",
+                                f"Don't forget to {reminder_text}! I'm here reminding you 😊",
+                                f"Hey you! {reminder_text.capitalize()}! Take care of yourself 💕",
+                                f"It's time! {reminder_text.capitalize()} 💕",
+                                f"Reminder from {persona_name}: {reminder_text}! 😊✨"
+                            ]
+                            
+                            import random
+                            message = random.choice(personal_messages)
+                            
+                            # Send text reminder
                             await self.app.bot.send_message(
                                 chat_id=user_id,
-                                text=f"⏰ *Reminder!*\n\n{reminder['text']} 💕",
-                                parse_mode="Markdown"
+                                text=message
                             )
+                            
+                            # Try to send voice reminder (if audio generation available)
+                            try:
+                                voice_text = f"Hey! It's time to {reminder_text}. Don't forget!"
+                                audio_result = self.generator.generate_audio(voice_text, audio_type="speech")
+                                
+                                if audio_result["success"]:
+                                    await self.app.bot.send_voice(
+                                        chat_id=user_id,
+                                        voice=audio_result["url"],
+                                        caption="🎙️ Voice reminder 💕"
+                                    )
+                            except Exception as voice_error:
+                                logger.debug(f"Voice reminder skipped: {voice_error}")
+                            
                         except Exception as e:
                             logger.error(f"Failed to send reminder to {user_id}: {e}")
                 
