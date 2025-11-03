@@ -55,18 +55,7 @@ def main():
     logger.info("✅ Configuration loaded")
     
     # Railway-specific: Clear any existing webhooks before starting polling
-    try:
-        import asyncio
-        from telegram import Bot
-        
-        async def clear_webhook():
-            bot = Bot(token=config.telegram_token)
-            await bot.delete_webhook(drop_pending_updates=True)
-            logger.info("✅ Cleared any existing webhooks")
-        
-        asyncio.run(clear_webhook())
-    except Exception as e:
-        logger.warning(f"⚠️ Could not clear webhook: {e}")
+    # This will be handled by the bot's initialization instead
     
     # Start website in background thread
     website_thread = threading.Thread(target=run_website_thread, daemon=True)

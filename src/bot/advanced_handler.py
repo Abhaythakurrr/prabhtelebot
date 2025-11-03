@@ -1229,6 +1229,14 @@ Issues: Contact through website"""
         
         logger.info("✅ Advanced bot handlers registered with cool features!")
     
+    async def clear_webhook_on_startup(self, application):
+        """Clear webhook before starting polling (Railway fix)"""
+        try:
+            await application.bot.delete_webhook(drop_pending_updates=True)
+            logger.info("✅ Cleared any existing webhooks")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not clear webhook: {e}")
+    
     async def start_proactive_system(self):
         """Start proactive messaging in background"""
         from src.bot.proactive_system import get_proactive_system
@@ -1251,8 +1259,9 @@ Issues: Contact through website"""
         
         logger.info("🤖 Starting advanced bot...")
         
-        # Start proactive system after bot starts
+        # Railway-specific: Clear webhook and start proactive system
         async def post_init(application):
+            await self.clear_webhook_on_startup(application)
             await self.start_proactive_system()
         
         self.app.post_init = post_init
