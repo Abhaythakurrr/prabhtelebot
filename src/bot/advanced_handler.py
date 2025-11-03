@@ -1032,17 +1032,24 @@ Issues: Contact through website"""
             ]
             
             when_text = "in 1 hour"  # default
-            reminder_text = text
+            reminder_text = text.lower()
             
+            # Remove common reminder phrases
+            reminder_text = re.sub(r'^remind me to\s+', '', reminder_text)
+            reminder_text = re.sub(r'^remind me\s+', '', reminder_text)
+            reminder_text = re.sub(r'^to\s+', '', reminder_text)
+            
+            # Extract time and remove it from reminder text
             for pattern in time_patterns:
-                match = re.search(pattern, text.lower())
+                match = re.search(pattern, reminder_text)
                 if match:
                     when_text = match.group(0)
                     # Remove the time part from reminder text
-                    reminder_text = text.replace(match.group(0), '').strip()
-                    # Remove common words
-                    reminder_text = reminder_text.replace('remind me to', '').replace('remind me', '').strip()
+                    reminder_text = reminder_text.replace(match.group(0), '').strip()
                     break
+            
+            # Clean up any remaining artifacts
+            reminder_text = reminder_text.strip()
             
             result = self.cool_features.set_reminder(user_id, reminder_text, when_text)
             if result["success"]:
@@ -1317,17 +1324,55 @@ Issues: Contact through website"""
                             persona = user.get('persona')
                             persona_name = persona.get('persona_name', 'Prabh') if persona else 'Prabh'
                             
-                            # Make it more personal and natural - as if Prabh is talking
-                            personal_messages = [
-                                f"Hey! It's {persona_name} here. Time to {reminder_text}! 💕",
-                                f"Don't forget to {reminder_text}! I'm here reminding you 😊",
-                                f"Hey you! {reminder_text.capitalize()}! Take care of yourself 💕",
-                                f"It's time! {reminder_text.capitalize()} 💕",
-                                f"Reminder from {persona_name}: {reminder_text}! 😊✨"
-                            ]
-                            
-                            import random
-                            message = random.choice(personal_messages)
+                            # Generate heartfelt, natural reminder using AI
+                            try:
+                                prompt = f"""You are {persona_name}, a caring companion reminding someone to: {reminder_text}
+
+Generate a warm, caring reminder message that:
+- Sounds natural and heartfelt (not robotic)
+- Shows genuine care and concern
+- Is 1-2 sentences
+- Includes appropriate emoji (💕 😊 ✨)
+- Feels like a real person who cares
+
+Examples:
+- "Hey love! Time to have dinner. I don't want you skipping meals, okay? 💕"
+- "Don't forget to drink water! Your body needs it and I need you healthy 😊"
+- "It's time! Go have dinner now. I'm here making sure you take care of yourself 💕"
+
+Generate a similar caring reminder for: {reminder_text}"""
+
+                                messages = [
+                                    {"role": "system", "content": prompt},
+                                    {"role": "user", "content": f"Generate caring reminder for: {reminder_text}"}
+                                ]
+                                
+                                model = self.roleplay.bytez.model("openai/gpt-4o-mini")
+                                result = model.run(messages)
+                                
+                                if hasattr(result, 'output') and result.output:
+                                    message = result.output.get('content', '')
+                                elif isinstance(result, dict):
+                                    message = result.get('content', '')
+                                else:
+                                    message = str(result)
+                                
+                                # Fallback if AI fails
+                                if not message or len(message) < 10:
+                                    raise Exception("AI response too short")
+                                    
+                            except Exception as ai_error:
+                                logger.debug(f"AI reminder generation failed: {ai_error}")
+                                # Fallback to template messages
+                                personal_messages = [
+                                    f"Hey love! Time to {reminder_text}. I don't want you forgetting, okay? 💕",
+                                    f"Don't forget to {reminder_text}! I'm here making sure you take care of yourself 😊",
+                                    f"It's time! {reminder_text.capitalize()}. Your health matters to me 💕",
+                                    f"Hey you! Time to {reminder_text}. I'm watching out for you 😊✨",
+                                    f"Reminder with love: {reminder_text}! Take care of yourself for me 💕"
+                                ]
+                                import random
+                                message = random.choice(personal_messages)
                             
                             # Send text reminder
                             await self.app.bot.send_message(
@@ -1337,14 +1382,23 @@ Issues: Contact through website"""
                             
                             # Try to send voice reminder (if audio generation available)
                             try:
-                                voice_text = f"Hey! It's time to {reminder_text}. Don't forget!"
+                                # Make voice message natural and caring
+                                voice_messages = [
+                                    f"Hey! It's time to {reminder_text}. I'm here reminding you because I care about you.",
+                                    f"Don't forget to {reminder_text}! Your health matters to me.",
+                                    f"Time to {reminder_text}! I'm watching out for you, always.",
+                                    f"Hey love, {reminder_text} now, okay? Take care of yourself for me."
+                                ]
+                                import random
+                                voice_text = random.choice(voice_messages)
+                                
                                 audio_result = self.generator.generate_audio(voice_text, audio_type="speech")
                                 
                                 if audio_result["success"]:
                                     await self.app.bot.send_voice(
                                         chat_id=user_id,
                                         voice=audio_result["url"],
-                                        caption="🎙️ Voice reminder 💕"
+                                        caption="🎙️ With love 💕"
                                     )
                             except Exception as voice_error:
                                 logger.debug(f"Voice reminder skipped: {voice_error}")
