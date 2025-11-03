@@ -86,15 +86,22 @@ class AIGenerator:
                         continue
                     raise
             
-            # Handle result
-            if isinstance(result, list) and result:
+            # Handle result - extract URL properly
+            if hasattr(result, 'output'):
+                # Bytez Response object
+                image_url = result.output
+            elif isinstance(result, list) and result:
                 image_url = result[0]
             elif isinstance(result, str):
                 image_url = result
             else:
                 image_url = str(result)
             
-            logger.info(f"✅ Image generated: {image_url[:50]}...")
+            # Ensure it's a valid URL string
+            if not isinstance(image_url, str):
+                image_url = str(image_url)
+            
+            logger.info(f"✅ Image generated: {str(result)[:100]}...")
             
             return {
                 "success": True,
@@ -130,14 +137,20 @@ class AIGenerator:
                         continue
                     raise
             
-            if isinstance(result, list) and result:
+            # Handle result - extract URL properly
+            if hasattr(result, 'output'):
+                video_url = result.output
+            elif isinstance(result, list) and result:
                 video_url = result[0]
             elif isinstance(result, str):
                 video_url = result
             else:
                 video_url = str(result)
             
-            logger.info(f"✅ Video generated: {video_url[:50]}...")
+            if not isinstance(video_url, str):
+                video_url = str(video_url)
+            
+            logger.info(f"✅ Video generated: {str(result)[:100]}...")
             
             return {
                 "success": True,
@@ -173,14 +186,20 @@ class AIGenerator:
                         continue
                     raise
             
-            if isinstance(result, list) and result:
+            # Handle result - extract URL properly
+            if hasattr(result, 'output'):
+                audio_url = result.output
+            elif isinstance(result, list) and result:
                 audio_url = result[0]
             elif isinstance(result, str):
                 audio_url = result
             else:
                 audio_url = str(result)
             
-            logger.info(f"✅ Audio generated")
+            if not isinstance(audio_url, str):
+                audio_url = str(audio_url)
+            
+            logger.info(f"✅ Audio generated: {str(result)[:100]}...")
             
             return {
                 "success": True,
