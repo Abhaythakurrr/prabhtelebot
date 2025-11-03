@@ -17,6 +17,7 @@ from src.features.voice_handler import get_voice_handler
 from src.features.scheduler import get_scheduler
 from src.features.memory_prompts import get_memory_prompts
 from src.features.cool_features import get_cool_features
+from src.features.games import get_games_engine
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class AdvancedBotHandler:
         self.scheduler = get_scheduler()
         self.memory_prompts = get_memory_prompts()
         self.cool_features = get_cool_features()
+        self.games_engine = get_games_engine()
         self.app = None
         self.proactive_system = None
     
@@ -576,19 +578,28 @@ Issues: Contact through website"""
         
         elif query.data == "fun_menu":
             keyboard = [
-                [InlineKeyboardButton("😄 Tell me a Joke", callback_data="tell_joke")],
-                [InlineKeyboardButton("🎲 Roll Dice", callback_data="roll_dice"),
-                 InlineKeyboardButton("🪙 Flip Coin", callback_data="flip_coin")],
-                [InlineKeyboardButton("🎮 20 Questions", callback_data="play_20q")],
-                [InlineKeyboardButton("✨ Motivate Me", callback_data="motivate")],
+                [InlineKeyboardButton("🎮 Word Guessing", callback_data="game_word"),
+                 InlineKeyboardButton("🧠 Trivia Quiz", callback_data="game_trivia")],
+                [InlineKeyboardButton("🎲 Number Guess", callback_data="game_number"),
+                 InlineKeyboardButton("🧩 Riddles", callback_data="game_riddle")],
+                [InlineKeyboardButton("🤔 Would You Rather", callback_data="game_wyr")],
+                [InlineKeyboardButton("😄 Tell Joke", callback_data="tell_joke"),
+                 InlineKeyboardButton("✨ Motivate Me", callback_data="motivate")],
+                [InlineKeyboardButton("📊 Game Stats", callback_data="game_stats"),
+                 InlineKeyboardButton("❌ Quit Game", callback_data="quit_game")],
                 [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.message.reply_text(
-                "🎮 *Fun & Games*\n\nLet's have some fun! What do you wanna do? 😊",
-                reply_markup=reply_markup,
-                parse_mode="Markdown"
-            )
+            
+            # Check if user has active game
+            active_game = self.games_engine.active_games.get(user_id)
+            if active_game:
+                game_type = active_game['type'].replace('_', ' ').title()
+                msg = f"🎮 *Fun & Games*\n\nYou have an active {game_type} game!\nContinue playing or start a new one! 😊"
+            else:
+                msg = "🎮 *Fun & Games*\n\nLet's play! Choose a game below! 😊"
+            
+            await query.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
         
         elif query.data == "smart_menu":
             keyboard = [
@@ -774,6 +785,45 @@ Issues: Contact through website"""
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.message.reply_text(tip, reply_markup=reply_markup)
+        
+        # ==================== GAME HANDLERS ====================
+        
+        elif query.data == "game_word":
+            result = self.games_engine.start_word_game(user_id)
+            await query.message.reply_text(result["message"], parse_mode="Markdown")
+            context.user_data["waiting_for"] = "game_move"
+        
+        elif query.data == "game_trivia":
+            result = self.games_engine.start_trivia(user_id)
+            await query.message.reply_text(result["message"], parse_mode="Markdown")
+            context.user_data["waiting_for"] = "game_move"
+        
+        elif query.data == "game_number":
+            result = self.games_engine.start_number_game(user_id)
+            await query.message.reply_text(result["message"], parse_mode="Markdown")
+            context.user_data["waiting_for"] = "game_move"
+        
+        elif query.data == "game_riddle":
+            result = self.games_engine.get_riddle(user_id)
+            await query.message.reply_text(result["message"], parse_mode="Markdown")
+            context.user_data["waiting_for"] = "game_move"
+        
+        elif query.data == "game_wyr":
+            result = self.games_engine.get_would_you_rather()
+            await query.message.reply_text(result["message"], parse_mode="Markdown")
+        
+        elif query.data == "game_stats":
+            result = self.games_engine.get_stats(user_id)
+            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="fun_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(result["message"], reply_markup=reply_markup, parse_mode="Markdown")
+        
+        elif query.data == "quit_game":
+            result = self.games_engine.quit_game(user_id)
+            context.user_data["waiting_for"] = None
+            keyboard = [[InlineKeyboardButton("🎮 Play Again", callback_data="fun_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(result["message"], reply_markup=reply_markup)
         
         elif query.data == "back_to_menu":
             # Show main menu again
@@ -1077,6 +1127,59 @@ Issues: Contact through website"""
             help_text = self.cool_features.help_decide(user_id, options, text)
             await update.message.reply_text(f"💡 {help_text}")
             context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "game_move":
+            # Handle game moves
+            if user_id not in self.games_engine.active_games:
+                await update.message.reply_text("No active game! Start one from the menu 🎮")
+                context.user_data["waiting_for"] = None
+                return
+            
+            game = self.games_engine.active_games[user_id]
+            game_type = game["type"]
+            
+            if game_type == "word_guess":
+                # Word guessing - expect a letter
+                if len(text) == 1 and text.isalpha():
+                    result = self.games_engine.guess_letter(user_id, text)
+                    await update.message.reply_text(result["message"], parse_mode="Markdown")
+                    
+                    if result.get("won") is not None:
+                        # Game ended
+                        context.user_data["waiting_for"] = None
+                        keyboard = [[InlineKeyboardButton("🎮 Play Again", callback_data="fun_menu")]]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await update.message.reply_text("Wanna play again? 😊", reply_markup=reply_markup)
+                else:
+                    await update.message.reply_text("Please send a single letter A-Z! 😊")
+            
+            elif game_type == "trivia":
+                result = self.games_engine.answer_trivia(user_id, text)
+                await update.message.reply_text(result["message"], parse_mode="Markdown")
+            
+            elif game_type == "number_guess":
+                try:
+                    guess = int(text)
+                    result = self.games_engine.guess_number(user_id, guess)
+                    await update.message.reply_text(result["message"], parse_mode="Markdown")
+                    
+                    if result.get("won") is not None:
+                        context.user_data["waiting_for"] = None
+                        keyboard = [[InlineKeyboardButton("🎮 Play Again", callback_data="fun_menu")]]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await update.message.reply_text("Wanna play again? 😊", reply_markup=reply_markup)
+                except ValueError:
+                    await update.message.reply_text("Please send a number! 😊")
+            
+            elif game_type == "riddle":
+                result = self.games_engine.answer_riddle(user_id, text)
+                await update.message.reply_text(result["message"], parse_mode="Markdown")
+                
+                if result.get("correct"):
+                    context.user_data["waiting_for"] = None
+                    keyboard = [[InlineKeyboardButton("🧩 Another Riddle", callback_data="game_riddle")]]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await update.message.reply_text("Want another riddle? 🧩", reply_markup=reply_markup)
         
         else:
             # Regular chat - always use Prabh personality with context
