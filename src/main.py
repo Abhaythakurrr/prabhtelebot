@@ -54,6 +54,20 @@ def main():
     
     logger.info("✅ Configuration loaded")
     
+    # Railway-specific: Clear any existing webhooks before starting polling
+    try:
+        import asyncio
+        from telegram import Bot
+        
+        async def clear_webhook():
+            bot = Bot(token=config.telegram_token)
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("✅ Cleared any existing webhooks")
+        
+        asyncio.run(clear_webhook())
+    except Exception as e:
+        logger.warning(f"⚠️ Could not clear webhook: {e}")
+    
     # Start website in background thread
     website_thread = threading.Thread(target=run_website_thread, daemon=True)
     website_thread.start()
@@ -62,7 +76,15 @@ def main():
     # Start bot (main thread)
     logger.info("🤖 Starting Advanced Telegram Bot...")
     bot = AdvancedBotHandler()
-    bot.run()
+    
+    try:
+        bot.run()
+    except KeyboardInterrupt:
+        logger.info("🛑 Shutting down gracefully...")
+    except Exception as e:
+        logger.error(f"❌ Bot error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

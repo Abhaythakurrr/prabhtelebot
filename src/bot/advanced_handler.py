@@ -1256,4 +1256,24 @@ Issues: Contact through website"""
             await self.start_proactive_system()
         
         self.app.post_init = post_init
-        self.app.run_polling(allowed_updates=Update.ALL_TYPES)
+        
+        # Railway-specific: Add retry logic for conflicts
+        max_retries = 3
+        retry_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                self.app.run_polling(
+                    allowed_updates=Update.ALL_TYPES,
+                    drop_pending_updates=True  # Drop old updates on Railway
+                )
+                break  # Success, exit retry loop
+            except Exception as e:
+                if "Conflict" in str(e) and attempt < max_retries - 1:
+                    logger.warning(f"⚠️ Conflict detected (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error(f"❌ Bot failed to start: {e}")
+                    raise
