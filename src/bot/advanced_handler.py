@@ -585,11 +585,12 @@ Issues: Contact through website"""
         
         elif query.data == "fun_menu":
             keyboard = [
-                [InlineKeyboardButton("🎮 Word Guessing", callback_data="game_word"),
-                 InlineKeyboardButton("🧠 Trivia Quiz", callback_data="game_trivia")],
-                [InlineKeyboardButton("🎲 Number Guess", callback_data="game_number"),
-                 InlineKeyboardButton("🧩 Riddles", callback_data="game_riddle")],
-                [InlineKeyboardButton("🤔 Would You Rather", callback_data="game_wyr")],
+                [InlineKeyboardButton("⭕ Tic-Tac-Toe", callback_data="game_tictactoe"),
+                 InlineKeyboardButton("🎮 Word Guess", callback_data="game_word")],
+                [InlineKeyboardButton("🧠 Trivia Quiz", callback_data="game_trivia"),
+                 InlineKeyboardButton("🎲 Number Guess", callback_data="game_number")],
+                [InlineKeyboardButton("🧩 Riddles", callback_data="game_riddle"),
+                 InlineKeyboardButton("🤔 Would You Rather", callback_data="game_wyr")],
                 [InlineKeyboardButton("😄 Tell Joke", callback_data="tell_joke"),
                  InlineKeyboardButton("✨ Motivate Me", callback_data="motivate")],
                 [InlineKeyboardButton("📊 Game Stats", callback_data="game_stats"),
@@ -812,6 +813,11 @@ Issues: Contact through website"""
         
         elif query.data == "game_riddle":
             result = self.games_engine.get_riddle(user_id)
+            await query.message.reply_text(result["message"], parse_mode="Markdown")
+            context.user_data["waiting_for"] = "game_move"
+        
+        elif query.data == "game_tictactoe":
+            result = self.games_engine.start_tictactoe(user_id)
             await query.message.reply_text(result["message"], parse_mode="Markdown")
             context.user_data["waiting_for"] = "game_move"
         
@@ -1222,6 +1228,20 @@ Issues: Contact through website"""
                     keyboard = [[InlineKeyboardButton("🧩 Another Riddle", callback_data="game_riddle")]]
                     reply_markup = InlineKeyboardMarkup(keyboard)
                     await update.message.reply_text("Want another riddle? 🧩", reply_markup=reply_markup)
+            
+            elif game_type == "tictactoe":
+                try:
+                    position = int(text)
+                    result = self.games_engine.make_tictactoe_move(user_id, position)
+                    await update.message.reply_text(result["message"], parse_mode="Markdown")
+                    
+                    if result.get("won") is not None:
+                        context.user_data["waiting_for"] = None
+                        keyboard = [[InlineKeyboardButton("⭕ Play Again", callback_data="game_tictactoe")]]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        await update.message.reply_text("Wanna play again? 😊", reply_markup=reply_markup)
+                except ValueError:
+                    await update.message.reply_text("Please send a number 1-9! 😊")
         
         else:
             # Regular chat - always use Prabh personality with context

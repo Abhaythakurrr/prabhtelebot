@@ -392,6 +392,224 @@ class GamesEngine:
                           f"Need a hint? Type 'hint' 💡"
             }
     
+    # ==================== TIC TAC TOE ====================
+    
+    def start_tictactoe(self, user_id: int, difficulty: str = "medium") -> Dict[str, Any]:
+        """Start Tic-Tac-Toe game"""
+        board = [[" " for _ in range(3)] for _ in range(3)]
+        
+        game_state = {
+            "type": "tictactoe",
+            "board": board,
+            "player": "X",  # User is X
+            "ai": "O",      # AI is O
+            "current_turn": "X",
+            "difficulty": difficulty,
+            "started_at": datetime.now().isoformat()
+        }
+        
+        self.active_games[user_id] = game_state
+        
+        board_display = self._get_tictactoe_display(board)
+        
+        return {
+            "success": True,
+            "message": f"⭕ *Tic-Tac-Toe!*\n\n"
+                      f"{board_display}\n\n"
+                      f"You are X, I'm O!\n"
+                      f"Choose position 1-9:\n"
+                      f"```\n1 2 3\n4 5 6\n7 8 9```\n\n"
+                      f"Your turn! 💕",
+            "board": board
+        }
+    
+    def make_tictactoe_move(self, user_id: int, position: int) -> Dict[str, Any]:
+        """Make a move in Tic-Tac-Toe"""
+        if user_id not in self.active_games:
+            return {"success": False, "message": "No active game!"}
+        
+        game = self.active_games[user_id]
+        if game["type"] != "tictactoe":
+            return {"success": False, "message": "Wrong game type!"}
+        
+        # Convert position (1-9) to row, col (0-2)
+        if position < 1 or position > 9:
+            return {"success": False, "message": "Position must be 1-9!"}
+        
+        row = (position - 1) // 3
+        col = (position - 1) % 3
+        
+        board = game["board"]
+        
+        # Check if position is empty
+        if board[row][col] != " ":
+            return {"success": False, "message": "That position is taken! Choose another 😊"}
+        
+        # Make player move
+        board[row][col] = game["player"]
+        
+        # Check if player won
+        winner = self._check_tictactoe_winner(board)
+        if winner == game["player"]:
+            self._update_stats(user_id, "tictactoe", won=True)
+            del self.active_games[user_id]
+            board_display = self._get_tictactoe_display(board)
+            return {
+                "success": True,
+                "won": True,
+                "message": f"🎉 *YOU WON!*\n\n{board_display}\n\nYou beat me! Amazing! 💕✨"
+            }
+        
+        # Check for draw
+        if self._is_tictactoe_full(board):
+            self._update_stats(user_id, "tictactoe", won=False)
+            del self.active_games[user_id]
+            board_display = self._get_tictactoe_display(board)
+            return {
+                "success": True,
+                "won": False,
+                "message": f"🤝 *It's a Draw!*\n\n{board_display}\n\nGood game! Wanna play again? 💕"
+            }
+        
+        # AI's turn
+        ai_pos = self._get_ai_tictactoe_move(board, game["difficulty"])
+        ai_row = ai_pos // 3
+        ai_col = ai_pos % 3
+        board[ai_row][ai_col] = game["ai"]
+        
+        # Check if AI won
+        winner = self._check_tictactoe_winner(board)
+        if winner == game["ai"]:
+            self._update_stats(user_id, "tictactoe", won=False)
+            del self.active_games[user_id]
+            board_display = self._get_tictactoe_display(board)
+            return {
+                "success": True,
+                "won": False,
+                "message": f"😊 *I Won!*\n\n{board_display}\n\nGood game! Wanna try again? 💕"
+            }
+        
+        # Check for draw after AI move
+        if self._is_tictactoe_full(board):
+            self._update_stats(user_id, "tictactoe", won=False)
+            del self.active_games[user_id]
+            board_display = self._get_tictactoe_display(board)
+            return {
+                "success": True,
+                "won": False,
+                "message": f"🤝 *It's a Draw!*\n\n{board_display}\n\nGood game! 💕"
+            }
+        
+        # Continue game
+        board_display = self._get_tictactoe_display(board)
+        return {
+            "success": True,
+            "message": f"⭕ *Tic-Tac-Toe*\n\n{board_display}\n\nYour turn! Choose 1-9 💕"
+        }
+    
+    def _get_tictactoe_display(self, board: List[List[str]]) -> str:
+        """Get emoji display of Tic-Tac-Toe board"""
+        symbols = {
+            "X": "❌",
+            "O": "⭕",
+            " ": "⬜"
+        }
+        
+        lines = []
+        for row in board:
+            line = " ".join([symbols[cell] for cell in row])
+            lines.append(line)
+        
+        return "\n".join(lines)
+    
+    def _check_tictactoe_winner(self, board: List[List[str]]) -> Optional[str]:
+        """Check if there's a winner"""
+        # Check rows
+        for row in board:
+            if row[0] == row[1] == row[2] != " ":
+                return row[0]
+        
+        # Check columns
+        for col in range(3):
+            if board[0][col] == board[1][col] == board[2][col] != " ":
+                return board[0][col]
+        
+        # Check diagonals
+        if board[0][0] == board[1][1] == board[2][2] != " ":
+            return board[0][0]
+        if board[0][2] == board[1][1] == board[2][0] != " ":
+            return board[0][2]
+        
+        return None
+    
+    def _is_tictactoe_full(self, board: List[List[str]]) -> bool:
+        """Check if board is full"""
+        for row in board:
+            if " " in row:
+                return False
+        return True
+    
+    def _get_ai_tictactoe_move(self, board: List[List[str]], difficulty: str) -> int:
+        """Get AI move (minimax for hard, random for easy)"""
+        if difficulty == "easy":
+            # Random move
+            empty = []
+            for i in range(3):
+                for j in range(3):
+                    if board[i][j] == " ":
+                        empty.append(i * 3 + j)
+            import random
+            return random.choice(empty) if empty else 0
+        
+        # Medium/Hard: Use minimax
+        best_score = -float('inf')
+        best_move = 0
+        
+        for i in range(3):
+            for j in range(3):
+                if board[i][j] == " ":
+                    board[i][j] = "O"
+                    score = self._minimax(board, 0, False)
+                    board[i][j] = " "
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_move = i * 3 + j
+        
+        return best_move
+    
+    def _minimax(self, board: List[List[str]], depth: int, is_maximizing: bool) -> int:
+        """Minimax algorithm for unbeatable AI"""
+        winner = self._check_tictactoe_winner(board)
+        
+        if winner == "O":
+            return 10 - depth
+        elif winner == "X":
+            return depth - 10
+        elif self._is_tictactoe_full(board):
+            return 0
+        
+        if is_maximizing:
+            best_score = -float('inf')
+            for i in range(3):
+                for j in range(3):
+                    if board[i][j] == " ":
+                        board[i][j] = "O"
+                        score = self._minimax(board, depth + 1, False)
+                        board[i][j] = " "
+                        best_score = max(score, best_score)
+            return best_score
+        else:
+            best_score = float('inf')
+            for i in range(3):
+                for j in range(3):
+                    if board[i][j] == " ":
+                        board[i][j] = "X"
+                        score = self._minimax(board, depth + 1, True)
+                        board[i][j] = " "
+                        best_score = min(score, best_score)
+            return best_score
+    
     # ==================== STATS & UTILITIES ====================
     
     def _update_stats(self, user_id: int, game_type: str, won: bool):

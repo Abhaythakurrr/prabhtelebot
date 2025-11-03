@@ -44,6 +44,7 @@
 
 - [ ] 1.5 Fix Current Bugs
   - Verify reminder text parsing works correctly
+
   - Test file upload with various .txt files
   - Ensure voice reminders generate properly
   - Confirm persona integration across features
