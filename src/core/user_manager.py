@@ -19,12 +19,13 @@ class UserManager:
     
     TIERS = {
         "free": {
-            "messages_per_day": 20,
-            "images_per_month": 3,
-            "videos_per_month": 0,
+            "messages_per_day": 50,
+            "images_per_month": 5,
+            "videos_per_month": 1,
             "audio_per_month": 10,
-            "memory_slots": 20,
-            "proactive_messages": False,
+            "memory_slots": 50,
+            "proactive_messages": True,  # Now enabled for free!
+            "proactive_limit": 3,  # 3 proactive messages per day
             "voice_calls": False
         },
         "basic": {
@@ -35,6 +36,7 @@ class UserManager:
             "audio_per_month": 200,
             "memory_slots": 100,
             "proactive_messages": True,
+            "proactive_limit": 10,  # 10 per day
             "voice_calls": False
         },
         "prime": {
@@ -45,6 +47,7 @@ class UserManager:
             "audio_per_month": 999999,
             "memory_slots": 500,
             "proactive_messages": True,
+            "proactive_limit": 999999,  # Unlimited
             "voice_calls": True
         },
         "lifetime": {
@@ -55,6 +58,7 @@ class UserManager:
             "audio_per_month": 999999,
             "memory_slots": 999999,
             "proactive_messages": True,
+            "proactive_limit": 999999,  # Unlimited
             "voice_calls": True
         }
     }

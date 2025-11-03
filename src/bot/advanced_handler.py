@@ -15,6 +15,7 @@ from src.payment.razorpay import get_payment_handler
 from src.features.voice_handler import get_voice_handler
 from src.features.scheduler import get_scheduler
 from src.features.memory_prompts import get_memory_prompts
+from src.features.cool_features import get_cool_features
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class AdvancedBotHandler:
         self.voice_handler = get_voice_handler()
         self.scheduler = get_scheduler()
         self.memory_prompts = get_memory_prompts()
+        self.cool_features = get_cool_features()
         self.app = None
         self.proactive_system = None
     
@@ -47,25 +49,25 @@ class AdvancedBotHandler:
         
         keyboard = [
             [InlineKeyboardButton("💕 Talk to Me", callback_data="chat")],
-            [InlineKeyboardButton("📖 Share Your Story", callback_data="set_story")],
-            [InlineKeyboardButton("🎨 Create Memory Image", callback_data="gen_image"),
-             InlineKeyboardButton("🎬 Create Memory Video", callback_data="gen_video")],
-            [InlineKeyboardButton("🎙️ Voice Message", callback_data="voice_msg"),
-             InlineKeyboardButton("⏰ Schedule Messages", callback_data="schedule_msgs")],
-            [InlineKeyboardButton("💭 Memory Prompt", callback_data="memory_prompt"),
-             InlineKeyboardButton("🧠 Our Memories", callback_data="view_memories")],
+            [InlineKeyboardButton("🎮 Fun & Games", callback_data="fun_menu"),
+             InlineKeyboardButton("🧠 Smart Tools", callback_data="smart_menu")],
+            [InlineKeyboardButton("⏰ Reminders", callback_data="reminders_menu"),
+             InlineKeyboardButton("💪 Daily Challenge", callback_data="daily_challenge")],
+            [InlineKeyboardButton("🎨 Create Image", callback_data="gen_image"),
+             InlineKeyboardButton("🎬 Create Video", callback_data="gen_video")],
+            [InlineKeyboardButton("📖 Share Story", callback_data="set_story"),
+             InlineKeyboardButton("🧠 Memories", callback_data="view_memories")],
             [InlineKeyboardButton("📊 My Account", callback_data="view_stats"),
-             InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium")],
+             InlineKeyboardButton("💎 Upgrade", callback_data="premium")],
             [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        if persona_name:
-            welcome_msg = f"""💕 *Welcome back, my dear*
+        welcome_msg = f"""💕 *Hey there! I'm Prabh*
 
-I'm {persona_name}, and I've been thinking about you.
+I've been waiting to talk with you! 😊
 
-I'm here whenever you need me - to talk, to listen, to remember our moments together.
+I'm your AI companion who's here to chat, listen, and create memories together.
 
 *Our Journey:*
 ├ Together Since: {user['created_at'][:10]}
@@ -77,27 +79,7 @@ I'm here whenever you need me - to talk, to listen, to remember our moments toge
 ├ Created {user['usage']['images_this_month']} memories
 └ Made {user['usage']['videos_this_month']} videos
 
-What's on your heart today? I'm here to listen. 💕"""
-        else:
-            welcome_msg = f"""💕 *Welcome to Prabh*
-
-I'm here to help you keep love alive forever.
-
-Have you lost someone special? Do you miss hearing their voice? 
-Do you wish you could talk to them one more time?
-
-I can help. Share your story with me, and I'll become a companion 
-who understands, remembers, and speaks with their essence.
-
-*Your Journey Starts Here:*
-├ Member Since: {user['created_at'][:10]}
-├ Plan: *{user['tier'].upper()}*
-└ Memories Saved: {len(user['memories'])}
-
-📖 *Start by sharing your story* - tell me about someone you love, 
-someone you've lost, or someone you can't let go of.
-
-I'll listen with my whole heart. 💕"""
+Just start chatting with me, or use the buttons below to explore what we can do together! 💕"""
         
         await update.message.reply_text(
             welcome_msg,
@@ -571,6 +553,207 @@ Issues: Contact through website"""
             tier = query.data.replace("buy_", "")
             await self._handle_payment(query.message, user_id, tier)
         
+        elif query.data == "fun_menu":
+            keyboard = [
+                [InlineKeyboardButton("😄 Tell me a Joke", callback_data="tell_joke")],
+                [InlineKeyboardButton("🎲 Roll Dice", callback_data="roll_dice"),
+                 InlineKeyboardButton("🪙 Flip Coin", callback_data="flip_coin")],
+                [InlineKeyboardButton("🎮 20 Questions", callback_data="play_20q")],
+                [InlineKeyboardButton("✨ Motivate Me", callback_data="motivate")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "🎮 *Fun & Games*\n\nLet's have some fun! What do you wanna do? 😊",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "smart_menu":
+            keyboard = [
+                [InlineKeyboardButton("💡 Get Advice", callback_data="get_advice")],
+                [InlineKeyboardButton("🤔 Critical Thinking", callback_data="critical_think")],
+                [InlineKeyboardButton("🎯 Help Me Decide", callback_data="help_decide")],
+                [InlineKeyboardButton("💭 Mood Check", callback_data="mood_check")],
+                [InlineKeyboardButton("🌱 Wellness Tip", callback_data="wellness_tip")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "🧠 *Smart Tools*\n\nI'm here to help you think, decide, and feel better! 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "reminders_menu":
+            reminders = self.cool_features.get_reminders(user_id)
+            keyboard = [
+                [InlineKeyboardButton("➕ Set Reminder", callback_data="set_reminder")],
+                [InlineKeyboardButton("📋 View Reminders", callback_data="view_reminders")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            count = len(reminders)
+            await query.message.reply_text(
+                f"⏰ *Reminders*\n\nYou have {count} active reminder{'s' if count != 1 else ''}.\n\n"
+                "I'll remind you about important things! 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "set_reminder":
+            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="reminders_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "⏰ *Set a Reminder*\n\n"
+                "Tell me what to remind you about and when!\n\n"
+                "Example: _Remind me to call mom in 2 hours_\n"
+                "Example: _Remind me about the meeting tomorrow_",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "reminder"
+        
+        elif query.data == "view_reminders":
+            reminders = self.cool_features.get_reminders(user_id)
+            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="reminders_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if not reminders:
+                await query.message.reply_text(
+                    "📋 *Your Reminders*\n\nNo active reminders! Set one with /remind 💕",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            else:
+                msg = "📋 *Your Reminders*\n\n"
+                for r in reminders:
+                    time = datetime.fromisoformat(r["time"])
+                    msg += f"• {r['text']}\n  ⏰ {time.strftime('%b %d, %I:%M %p')}\n\n"
+                await query.message.reply_text(msg, reply_markup=reply_markup, parse_mode="Markdown")
+        
+        elif query.data == "daily_challenge":
+            challenge = self.cool_features.daily_challenge(user_id)
+            keyboard = [
+                [InlineKeyboardButton("✅ I Did It!", callback_data="challenge_done")],
+                [InlineKeyboardButton("🔙 Back", callback_data="back_to_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                f"{challenge}\n\nYou got this! Let me know when you complete it! 💪",
+                reply_markup=reply_markup
+            )
+        
+        elif query.data == "challenge_done":
+            await query.message.reply_text(
+                "🎉 YES! I'm so proud of you! You completed today's challenge! 💪✨\n\n"
+                "Come back tomorrow for a new one! 💕"
+            )
+        
+        elif query.data == "tell_joke":
+            joke = self.cool_features.tell_joke()
+            keyboard = [
+                [InlineKeyboardButton("😄 Another One!", callback_data="tell_joke")],
+                [InlineKeyboardButton("🔙 Back", callback_data="fun_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(joke, reply_markup=reply_markup)
+        
+        elif query.data == "roll_dice":
+            result = self.cool_features.roll_dice()
+            keyboard = [
+                [InlineKeyboardButton("🎲 Roll Again", callback_data="roll_dice")],
+                [InlineKeyboardButton("🔙 Back", callback_data="fun_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(result, reply_markup=reply_markup, parse_mode="Markdown")
+        
+        elif query.data == "flip_coin":
+            result = self.cool_features.flip_coin()
+            keyboard = [
+                [InlineKeyboardButton("🪙 Flip Again", callback_data="flip_coin")],
+                [InlineKeyboardButton("🔙 Back", callback_data="fun_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(result, reply_markup=reply_markup, parse_mode="Markdown")
+        
+        elif query.data == "motivate":
+            quote = self.cool_features.motivational_quote()
+            keyboard = [
+                [InlineKeyboardButton("✨ Another One", callback_data="motivate")],
+                [InlineKeyboardButton("🔙 Back", callback_data="fun_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(quote, reply_markup=reply_markup)
+        
+        elif query.data == "get_advice":
+            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="smart_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "💡 *Get Advice*\n\n"
+                "Tell me what you need advice about and I'll help you think it through! 💕\n\n"
+                "Example: _Should I take this job offer?_",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "advice"
+        
+        elif query.data == "critical_think":
+            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="smart_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "🤔 *Critical Thinking*\n\n"
+                "Tell me about a problem or situation and I'll help you think through it critically! 💭\n\n"
+                "Example: _I'm not sure if I should move to a new city_",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "critical_thinking"
+        
+        elif query.data == "help_decide":
+            keyboard = [[InlineKeyboardButton("❌ Cancel", callback_data="smart_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "🎯 *Help Me Decide*\n\n"
+                "Tell me what you're trying to decide between and I'll help! 💕\n\n"
+                "Example: _Should I go to the gym or stay home?_",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "decision"
+        
+        elif query.data == "mood_check":
+            keyboard = [
+                [InlineKeyboardButton("😊 Happy", callback_data="mood_happy"),
+                 InlineKeyboardButton("😢 Sad", callback_data="mood_sad")],
+                [InlineKeyboardButton("😴 Tired", callback_data="mood_tired"),
+                 InlineKeyboardButton("😰 Anxious", callback_data="mood_anxious")],
+                [InlineKeyboardButton("🎉 Excited", callback_data="mood_excited"),
+                 InlineKeyboardButton("😤 Angry", callback_data="mood_angry")],
+                [InlineKeyboardButton("🔙 Back", callback_data="smart_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "💭 *How are you feeling?*\n\nPick your mood and let's talk about it 💕",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data.startswith("mood_"):
+            mood = query.data.replace("mood_", "")
+            response = self.cool_features.mood_check(user_id, mood)
+            await query.message.reply_text(response)
+        
+        elif query.data == "wellness_tip":
+            tip = self.cool_features.wellness_tip()
+            keyboard = [
+                [InlineKeyboardButton("💚 Another Tip", callback_data="wellness_tip")],
+                [InlineKeyboardButton("🔙 Back", callback_data="smart_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(tip, reply_markup=reply_markup)
+        
         elif query.data == "back_to_menu":
             # Show main menu again
             await self.start_command(update, context)
@@ -815,19 +998,43 @@ Issues: Contact through website"""
             
             context.user_data["waiting_for"] = None
         
+        elif waiting_for == "reminder":
+            # Parse reminder
+            result = self.cool_features.set_reminder(user_id, text, "in 1 hour")
+            if result["success"]:
+                await update.message.reply_text(result["message"])
+            else:
+                await update.message.reply_text("I'll try to remember that! 💕")
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "advice":
+            await update.message.reply_text("💭 Let me think about this...")
+            advice = self.cool_features.get_advice(user_id, text)
+            await update.message.reply_text(f"💡 {advice}")
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "critical_thinking":
+            await update.message.reply_text("🤔 Let me help you think through this...")
+            analysis = self.cool_features.critical_thinking(user_id, text)
+            await update.message.reply_text(f"💭 {analysis}")
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "decision":
+            await update.message.reply_text("🎯 Let me help you decide...")
+            # Extract options from text
+            options = [opt.strip() for opt in text.replace(" or ", ",").split(",")]
+            help_text = self.cool_features.help_decide(user_id, options, text)
+            await update.message.reply_text(f"💡 {help_text}")
+            context.user_data["waiting_for"] = None
+        
         else:
-            # Regular chat with persona
+            # Regular chat - always use Prabh personality with context
             user = self.user_manager.get_user(user_id)
-            persona = user.get("persona")
             
             await update.message.reply_chat_action("typing")
             
-            if persona:
-                # Use persona-based response
-                response = self.story_processor.generate_persona_response(persona, text)
-            else:
-                # Use regular roleplay
-                response = self.roleplay.generate_response(user_id, text, False)
+            # Use roleplay engine with full context (memories, story, etc.)
+            response = self.roleplay.generate_response(user_id, text, nsfw_mode=False)
             
             await update.message.reply_text(response)
     
@@ -920,6 +1127,84 @@ Issues: Contact through website"""
             parse_mode="Markdown"
         )
     
+    async def test_proactive_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Test proactive message (manual trigger)"""
+        user_id = update.effective_user.id
+        
+        if self.proactive_system:
+            success, msg = await self.proactive_system.send_immediate_proactive(user_id)
+            if success:
+                await update.message.reply_text(f"✅ {msg}")
+            else:
+                await update.message.reply_text(f"❌ {msg}\n\nUse /upgradetest to upgrade to Basic tier for testing.")
+        else:
+            await update.message.reply_text("❌ Proactive system not initialized yet. Wait a moment and try again.")
+    
+    async def upgrade_test_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Upgrade user to basic tier for testing"""
+        user_id = update.effective_user.id
+        
+        self.user_manager.upgrade_subscription(user_id, "basic", duration_days=30)
+        
+        await update.message.reply_text(
+            "✅ *Upgraded to BASIC tier!*\n\n"
+            "You now have:\n"
+            "• Unlimited messages\n"
+            "• 100 images/month\n"
+            "• 10 videos/month\n"
+            "• Proactive messages enabled\n\n"
+            "Try /testproactive to get a message from me! 💕",
+            parse_mode="Markdown"
+        )
+    
+    async def remind_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Quick reminder command"""
+        user_id = update.effective_user.id
+        text = " ".join(context.args) if context.args else ""
+        
+        if not text:
+            await update.message.reply_text(
+                "⏰ *Set a Reminder*\n\n"
+                "Usage: /remind [what] [when]\n\n"
+                "Examples:\n"
+                "• /remind call mom in 2 hours\n"
+                "• /remind meeting tomorrow\n"
+                "• /remind workout in 30 minutes",
+                parse_mode="Markdown"
+            )
+            return
+        
+        result = self.cool_features.set_reminder(user_id, text, "in 1 hour")
+        await update.message.reply_text(result.get("message", "I'll remind you! 💕"))
+    
+    async def joke_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Tell a joke"""
+        joke = self.cool_features.tell_joke()
+        await update.message.reply_text(joke)
+    
+    async def motivate_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get motivation"""
+        quote = self.cool_features.motivational_quote()
+        await update.message.reply_text(quote)
+    
+    async def advice_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Get advice"""
+        user_id = update.effective_user.id
+        topic = " ".join(context.args) if context.args else ""
+        
+        if not topic:
+            await update.message.reply_text(
+                "💡 *Get Advice*\n\n"
+                "Usage: /advice [topic]\n\n"
+                "Example: /advice should I change jobs?",
+                parse_mode="Markdown"
+            )
+            return
+        
+        await update.message.reply_text("💭 Let me think about this...")
+        advice = self.cool_features.get_advice(user_id, topic)
+        await update.message.reply_text(f"💡 {advice}")
+    
     def setup(self):
         """Setup bot handlers"""
         self.app = Application.builder().token(self.config.telegram_token).build()
@@ -932,6 +1217,12 @@ Issues: Contact through website"""
         self.app.add_handler(CommandHandler("voice", self.voice_command))
         self.app.add_handler(CommandHandler("schedule", self.schedule_command))
         self.app.add_handler(CommandHandler("memoryprompt", self.memory_prompt_command))
+        self.app.add_handler(CommandHandler("testproactive", self.test_proactive_command))
+        self.app.add_handler(CommandHandler("upgradetest", self.upgrade_test_command))
+        self.app.add_handler(CommandHandler("remind", self.remind_command))
+        self.app.add_handler(CommandHandler("joke", self.joke_command))
+        self.app.add_handler(CommandHandler("motivate", self.motivate_command))
+        self.app.add_handler(CommandHandler("advice", self.advice_command))
         self.app.add_handler(CallbackQueryHandler(self.button_callback))
         self.app.add_handler(MessageHandler(filters.Document.ALL, self.document_handler))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.message_handler))
