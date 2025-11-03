@@ -89,7 +89,7 @@ Be empathetic and detailed. This is for someone trying to reconnect with a lost 
                 "physical_description": analysis.get("physical_description", ""),
                 "special_moments": analysis.get("special_moments", []),
                 "loss_context": analysis.get("loss_context", ""),
-                "created_at": str(logger.time())
+                "created_at": ""
             }
             
             logger.info(f"✅ Story processed: {persona['persona_name']}, {len(persona['memories'])} memories")
@@ -102,10 +102,12 @@ Be empathetic and detailed. This is for someone trying to reconnect with a lost 
             
         except Exception as e:
             logger.error(f"Story processing error: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "error": str(e),
-                "persona": self._create_default_analysis(story_text)
+                "persona": None
             }
     
     def _create_default_analysis(self, story_text: str) -> Dict[str, Any]:
