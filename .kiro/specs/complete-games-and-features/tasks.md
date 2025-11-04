@@ -87,6 +87,7 @@
   - Validate move format
 
 
+
   - Show available moves on request
   - _Requirements: 2.3_
 
