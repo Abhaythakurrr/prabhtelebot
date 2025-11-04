@@ -1282,24 +1282,34 @@ Issues: Contact through website"""
             await message.reply_text("❌ Invalid tier!")
             return
         
-        # Create payment order
-        order = self.payment.create_order(price, f"subscription_{tier}")
+        # Create payment order with correct parameters
+        order_result = self.payment.create_order(str(user_id), tier, price)
         
-        if order:
-            payment_link = f"{self.config.website_url}/payment?order_id={order['id']}&user_id={user_id}&tier={tier}"
+        if order_result.get("success"):
+            order_id = order_result["order_id"]
+            key_id = order_result["key_id"]
+            
+            # Create payment link
+            payment_link = f"{self.config.website_url}/payment?order_id={order_id}&user_id={user_id}&tier={tier}&amount={price}&key_id={key_id}"
             
             keyboard = [[InlineKeyboardButton("💳 Pay Now", url=payment_link)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await message.reply_text(
                 f"💎 *{tier.upper()} Subscription*\n\n"
-                f"Amount: ₹{price}\n\n"
-                "Click below to complete payment:",
+                f"Amount: ₹{price}\n"
+                f"Order ID: `{order_id}`\n\n"
+                "Click below to complete payment securely via Razorpay:",
                 reply_markup=reply_markup,
                 parse_mode="Markdown"
             )
         else:
-            await message.reply_text("❌ Payment system error. Try again later!")
+            error_msg = order_result.get("error", "Unknown error")
+            await message.reply_text(
+                f"❌ Payment system error!\n\n"
+                f"Error: {error_msg}\n\n"
+                "Please try again later or contact support."
+            )
     
     async def document_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle document uploads"""

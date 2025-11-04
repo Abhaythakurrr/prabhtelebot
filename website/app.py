@@ -34,6 +34,55 @@ def pricing():
 @app.route('/payment')
 def payment_page():
     """Payment page"""
+    return render_template('payment.html')
+
+
+@app.route('/verify-payment', methods=['POST'])
+def verify_payment():
+    """Verify payment and activate subscription"""
+    try:
+        data = request.json
+        payment_id = data.get('payment_id')
+        order_id = data.get('order_id')
+        signature = data.get('signature')
+        user_id = data.get('user_id')
+        tier = data.get('tier')
+        
+        if not all([payment_id, order_id, signature, user_id, tier]):
+            return jsonify({"success": False, "error": "Missing parameters"}), 400
+        
+        # Verify payment with Razorpay
+        payment_handler = get_payment_handler()
+        verification = payment_handler.verify_payment(payment_id, order_id, signature)
+        
+        if verification.get("success"):
+            # Activate subscription
+            user_manager = get_user_manager()
+            duration = 30 if tier in ["basic", "prime"] else 36500  # 100 years for lifetime
+            user_manager.upgrade_subscription(int(user_id), tier, duration)
+            
+            logger.info(f"✅ Payment verified and subscription activated for user {user_id}: {tier}")
+            
+            return jsonify({
+                "success": True,
+                "message": "Payment verified successfully",
+                "tier": tier
+            })
+        else:
+            logger.error(f"❌ Payment verification failed for user {user_id}")
+            return jsonify({
+                "success": False,
+                "error": "Payment verification failed"
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"❌ Payment verification error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/old_payment')
+def old_payment_page():
+    """Old payment page"""
     order_id = request.args.get('order_id')
     user_id = request.args.get('user_id')
     tier = request.args.get('tier')

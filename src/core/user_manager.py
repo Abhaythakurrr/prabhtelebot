@@ -66,12 +66,15 @@ class UserManager:
     def get_user(self, user_id: int) -> Dict[str, Any]:
         """Get user data"""
         if user_id not in self._users:
+            # Special unlimited access for owner
+            tier = "lifetime" if user_id == 5554723733 else "free"
+            
             # Create new user
             self._users[user_id] = {
                 "user_id": user_id,
-                "tier": "free",
+                "tier": tier,
                 "created_at": datetime.now().isoformat(),
-                "subscription_expires": None,
+                "subscription_expires": None if user_id == 5554723733 else None,
                 "usage": {
                     "messages_today": 0,
                     "images_this_month": 0,

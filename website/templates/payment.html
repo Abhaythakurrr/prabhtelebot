@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment - Prabh Bot</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .payment-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .payment-details {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .amount {
+            font-size: 2em;
+            color: #667eea;
+        }
+        
+        .pay-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .pay-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .pay-button:active {
+            transform: translateY(0);
+        }
+        
+        .secure-badge {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .secure-badge svg {
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            display: none;
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .success-message {
+            display: none;
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="logo">
+            <h1>💕 Prabh</h1>
+            <p>Complete Your Payment</p>
+        </div>
+        
+        <div class="payment-details">
+            <div class="detail-row">
+                <span class="detail-label">Plan:</span>
+                <span class="detail-value" id="plan-name">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span class="detail-value" id="order-id" style="font-size: 0.8em;">Loading...</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value amount" id="amount">₹0</span>
+            </div>
+        </div>
+        
+        <button class="pay-button" id="pay-button" onclick="initiatePayment()">
+            💳 Pay Securely with Razorpay
+        </button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Processing...</p>
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+        <div class="success-message" id="success-message"></div>
+        
+        <div class="secure-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+            </svg>
+            Secured by Razorpay
+        </div>
+    </div>
+    
+    <script>
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('order_id');
+        const userId = urlParams.get('user_id');
+        const tier = urlParams.get('tier');
+        const amount = urlParams.get('amount');
+        const keyId = urlParams.get('key_id');
+        
+        // Display payment details
+        document.getElementById('plan-name').textContent = tier.toUpperCase();
+        document.getElementById('order-id').textContent = orderId;
+        document.getElementById('amount').textContent = '₹' + amount;
+        
+        function initiatePayment() {
+            const options = {
+                key: keyId,
+                amount: amount * 100, // Amount in paise
+                currency: 'INR',
+                name: 'Prabh Bot',
+                description: tier.toUpperCase() + ' Subscription',
+                order_id: orderId,
+                handler: function(response) {
+                    // Payment successful
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('pay-button').style.display = 'none';
+                    
+                    // Verify payment on backend
+                    verifyPayment(response);
+                },
+                prefill: {
+                    name: '',
+                    email: '',
+                    contact: ''
+                },
+                theme: {
+                    color: '#667eea'
+                },
+                modal: {
+                    ondismiss: function() {
+                        showError('Payment cancelled. Please try again.');
+                    }
+                }
+            };
+            
+            const rzp = new Razorpay(options);
+            rzp.on('payment.failed', function(response) {
+                showError('Payment failed: ' + response.error.description);
+            });
+            rzp.open();
+        }
+        
+        function verifyPayment(response) {
+            // Send verification request to backend
+            fetch('/verify-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    payment_id: response.razorpay_payment_id,
+                    order_id: response.razorpay_order_id,
+                    signature: response.razorpay_signature,
+                    user_id: userId,
+                    tier: tier
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.success) {
+                    showSuccess('Payment successful! Your subscription is now active. You can close this page and return to the bot.');
+                } else {
+                    showError('Payment verification failed. Please contact support with Order ID: ' + orderId);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                showError('Error verifying payment. Please contact support.');
+            });
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('pay-button').style.display = 'block';
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+        
+        // Check if all required parameters are present
+        if (!orderId || !userId || !tier || !amount || !keyId) {
+            showError('Invalid payment link. Please generate a new payment link from the bot.');
+            document.getElementById('pay-button').disabled = true;
+        }
+    </script>
+</body>
+</html>
