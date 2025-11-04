@@ -136,18 +136,24 @@
     - Implement intensity warnings before activation
     - Add mental health disclaimers
     - Create emergency exit functionality
+
+
+
+
     - Add cooldown period enforcement
     - _Requirements: 10.2, 10.4_
   
   - [ ] 4.6 Add Luci mode testing
     - Write unit tests for assessment generation
+
     - Test challenge creation
     - Test transformation tracking
     - Test safety mechanisms
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
 - [ ] 5. Integrate modes into bot handler
-  - [ ] 5.1 Add mode detection to message handler
+  - [x] 5.1 Add mode detection to message handler
+
     - Update `src/bot/advanced_handler.py` to detect mode activation keywords
     - Add mode-specific message routing
     - Implement mode context injection
@@ -155,6 +161,7 @@
   
   - [ ] 5.2 Create mode activation flows
     - Add roleplay genre selection flow
+
     - Add dream life goal extraction flow
     - Add Luci focus area selection flow
     - Implement mode confirmation dialogs

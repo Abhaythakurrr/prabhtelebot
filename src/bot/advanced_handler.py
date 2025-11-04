@@ -19,6 +19,10 @@ from src.features.memory_prompts import get_memory_prompts
 from src.features.cool_features import get_cool_features
 from src.features.games import get_games_engine
 from src.features.language_support import get_language_support
+from src.features.mode_engine import get_mode_manager
+from src.features.roleplay_story_engine import get_roleplay_story_engine
+from src.features.dreamlife_engine import get_dreamlife_engine
+from src.features.luci_engine import get_luci_engine
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,10 @@ class AdvancedBotHandler:
         self.cool_features = get_cool_features()
         self.games_engine = get_games_engine()
         self.language_support = get_language_support()
+        self.mode_manager = get_mode_manager()
+        self.roleplay_story = get_roleplay_story_engine()
+        self.dreamlife = get_dreamlife_engine()
+        self.luci = get_luci_engine()
         self.app = None
         self.proactive_system = None
     
@@ -58,6 +66,7 @@ class AdvancedBotHandler:
         
         keyboard = [
             [InlineKeyboardButton("💕 Talk to Me", callback_data="chat")],
+            [InlineKeyboardButton("🚀 Advanced Modes", callback_data="advanced_modes_menu")],
             [InlineKeyboardButton("🎮 Fun & Games", callback_data="fun_menu"),
              InlineKeyboardButton("🧠 Smart Tools", callback_data="smart_menu")],
             [InlineKeyboardButton("⏰ Reminders", callback_data="reminders_menu"),
@@ -183,6 +192,358 @@ Just start chatting with me, or use the buttons below to explore what we can do 
                 parse_mode="Markdown"
             )
             context.user_data["mode"] = "chat"
+        
+        elif query.data == "advanced_modes_menu":
+            # Check current mode
+            current_mode = self.mode_manager.get_current_mode(str(user_id))
+            mode_status = f"Active: *{current_mode.upper()}*" if current_mode else "No active mode"
+            
+            keyboard = [
+                [InlineKeyboardButton("🎭 Roleplay Stories", callback_data="mode_roleplay")],
+                [InlineKeyboardButton("🌟 Dream Life Mode", callback_data="mode_dreamlife")],
+                [InlineKeyboardButton("⚡ Luci Mode (Intense)", callback_data="mode_luci")],
+            ]
+            
+            if current_mode:
+                keyboard.append([InlineKeyboardButton("📊 Mode Status", callback_data="mode_status")])
+                keyboard.append([InlineKeyboardButton("🚪 Exit Mode", callback_data="mode_exit")])
+            
+            keyboard.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_menu")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                f"🚀 *Advanced Modes*\n\n"
+                f"{mode_status}\n\n"
+                f"*Choose Your Experience:*\n\n"
+                f"🎭 *Roleplay Stories*\n"
+                f"Interactive narratives in thriller, horror, romantic, and dreamy genres\n\n"
+                f"🌟 *Dream Life Mode*\n"
+                f"Live your alternate life and achieve your dreams through simulation\n\n"
+                f"⚡ *Luci Mode*\n"
+                f"Brutal transformation mentor using dark psychology\n"
+                f"⚠️ WARNING: Intense and challenging",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "mode_roleplay":
+            # Show roleplay genre selection
+            from src.features.roleplay_story_engine import RoleplayStoryEngine
+            genres = RoleplayStoryEngine.GENRES
+            
+            keyboard = []
+            for genre_key, genre_info in genres.items():
+                keyboard.append([InlineKeyboardButton(
+                    f"{genre_info['emoji']} {genre_info['name']}", 
+                    callback_data=f"roleplay_start_{genre_key}"
+                )])
+            keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="advanced_modes_menu")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "🎭 *Roleplay Stories*\n\n"
+                "Choose your genre:\n\n"
+                + "\n".join([f"{info['emoji']} *{info['name']}*: {info['description']}" 
+                            for info in genres.values()]),
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data.startswith("roleplay_start_"):
+            genre = query.data.replace("roleplay_start_", "")
+            
+            # Activate roleplay mode
+            self.mode_manager.activate_mode(str(user_id), "roleplay")
+            
+            # Start story
+            result = self.roleplay_story.start_story(str(user_id), genre)
+            
+            if result["success"]:
+                # Format choices
+                choices_text = "\n".join([f"{i+1}. {choice}" for i, choice in enumerate(result["choices"])])
+                
+                keyboard = [
+                    [InlineKeyboardButton("1️⃣", callback_data="roleplay_choice_0"),
+                     InlineKeyboardButton("2️⃣", callback_data="roleplay_choice_1"),
+                     InlineKeyboardButton("3️⃣", callback_data="roleplay_choice_2")],
+                    [InlineKeyboardButton("🚪 Exit Story", callback_data="mode_exit")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.message.reply_text(
+                    f"🎭 *{result['genre'].upper()} Story - Scene {result['scene_number']}*\n\n"
+                    f"{result['scene']}\n\n"
+                    f"*What do you do?*\n{choices_text}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            else:
+                await query.message.reply_text(f"Error: {result.get('error', 'Unknown error')}")
+        
+        elif query.data.startswith("roleplay_choice_"):
+            choice_idx = int(query.data.replace("roleplay_choice_", ""))
+            
+            # Process choice
+            result = self.roleplay_story.process_choice(str(user_id), choice_idx)
+            
+            if result["success"]:
+                choices_text = "\n".join([f"{i+1}. {choice}" for i, choice in enumerate(result["choices"])])
+                
+                keyboard = [
+                    [InlineKeyboardButton("1️⃣", callback_data="roleplay_choice_0"),
+                     InlineKeyboardButton("2️⃣", callback_data="roleplay_choice_1"),
+                     InlineKeyboardButton("3️⃣", callback_data="roleplay_choice_2")],
+                    [InlineKeyboardButton("🚪 Exit Story", callback_data="mode_exit")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.message.reply_text(
+                    f"🎭 *Scene {result['scene_number']}*\n\n"
+                    f"{result['scene']}\n\n"
+                    f"*What do you do?*\n{choices_text}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            else:
+                await query.message.reply_text(f"Error: {result.get('error', 'Unknown error')}")
+        
+        elif query.data == "mode_dreamlife":
+            keyboard = [
+                [InlineKeyboardButton("✨ Start Dream Life", callback_data="dreamlife_start")],
+                [InlineKeyboardButton("🔙 Back", callback_data="advanced_modes_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "🌟 *Dream Life Mode*\n\n"
+                "Live your alternate life and achieve your dreams!\n\n"
+                "*How it works:*\n"
+                "1. Tell me your dream/goal\n"
+                "2. I'll create a personalized life simulation\n"
+                "3. Make choices and take actions\n"
+                "4. Watch your dream become reality\n\n"
+                "Ready to start?",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "dreamlife_start":
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="advanced_modes_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "🌟 *Tell Me Your Dream*\n\n"
+                "What do you want to achieve in life?\n\n"
+                "*Examples:*\n"
+                "• Become a successful entrepreneur\n"
+                "• Get fit and run a marathon\n"
+                "• Learn to play guitar professionally\n"
+                "• Build wealth and financial freedom\n"
+                "• Find love and build a family\n\n"
+                "Tell me your dream in detail:",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "dream_description"
+        
+        elif query.data == "mode_luci":
+            keyboard = [
+                [InlineKeyboardButton("⚠️ I Understand, Activate Luci", callback_data="luci_confirm")],
+                [InlineKeyboardButton("🔙 Back", callback_data="advanced_modes_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                self.luci._get_activation_warning(),
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data == "luci_confirm":
+            # Show focus area selection
+            from src.features.luci_engine import LuciEngine
+            focus_areas = LuciEngine.FOCUS_AREAS
+            
+            keyboard = []
+            for area_key, area_info in focus_areas.items():
+                keyboard.append([InlineKeyboardButton(
+                    f"{area_info['emoji']} {area_info['name']}", 
+                    callback_data=f"luci_start_{area_key}"
+                )])
+            keyboard.append([InlineKeyboardButton("🔙 Back", callback_data="advanced_modes_menu")])
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "⚡ *Luci Mode - Choose Your Focus*\n\n"
+                + "\n".join([f"{info['emoji']} *{info['name']}*\n{info['description']}" 
+                            for info in focus_areas.values()]),
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+        elif query.data.startswith("luci_start_"):
+            focus_area = query.data.replace("luci_start_", "")
+            
+            # Activate Luci mode
+            self.mode_manager.activate_mode(str(user_id), "luci")
+            result = self.luci.activate_luci(str(user_id), focus_area)
+            
+            if result["success"]:
+                keyboard = [
+                    [InlineKeyboardButton("💪 Respond to Challenge", callback_data="luci_respond")],
+                    [InlineKeyboardButton("🚪 Exit Luci", callback_data="mode_exit")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                challenge = result["first_challenge"]
+                await query.message.reply_text(
+                    f"⚡ *Luci Mode Activated*\n"
+                    f"Focus: {result['focus_area'].upper()}\n"
+                    f"Intensity: {result['intensity']}/10\n\n"
+                    f"*Assessment:*\n{result['assessment']['assessment']}\n\n"
+                    f"*Your First Challenge:*\n{challenge['challenge']}\n\n"
+                    f"*Action Required:* {challenge['action_required']}\n"
+                    f"*Deadline:* {challenge['deadline']}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            else:
+                await query.message.reply_text(f"Error: {result.get('error', 'Unknown error')}")
+        
+        elif query.data == "luci_respond":
+            keyboard = [
+                [InlineKeyboardButton("❌ Cancel", callback_data="mode_status")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.reply_text(
+                "⚡ *Report Your Progress*\n\n"
+                "Tell me what you did. Be honest.\n\n"
+                "Luci doesn't accept excuses.",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+            context.user_data["waiting_for"] = "luci_response"
+        
+        elif query.data == "mode_status":
+            current_mode = self.mode_manager.get_current_mode(str(user_id))
+            
+            if not current_mode:
+                await query.message.reply_text("No active mode.")
+                return
+            
+            keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="advanced_modes_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            if current_mode == "roleplay":
+                progress = self.roleplay_story.get_story_progress(str(user_id))
+                if progress["has_story"]:
+                    await query.message.reply_text(
+                        f"🎭 *Roleplay Story Status*\n\n"
+                        f"Genre: {progress['genre_emoji']} {progress['genre_name']}\n"
+                        f"Scene: {progress['scene_number']}\n"
+                        f"Choices Made: {progress['choices_made']}",
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown"
+                    )
+            
+            elif current_mode == "dreamlife":
+                state = self.dreamlife.get_dream_state(str(user_id))
+                if state:
+                    await query.message.reply_text(
+                        f"🌟 *Dream Life Status*\n\n"
+                        f"Dream: {state['dream_description']}\n"
+                        f"Progress: {state['progress_percentage']}%\n"
+                        f"Milestone: {state['current_milestone']+1}/{len(state['milestones'])}\n"
+                        f"Achievements: {len(state['achievements'])}",
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown"
+                    )
+            
+            elif current_mode == "luci":
+                tracking = self.luci.track_transformation(str(user_id))
+                if tracking["active"]:
+                    await query.message.reply_text(
+                        f"⚡ *Luci Mode Status*\n\n"
+                        f"Focus: {tracking['focus_emoji']} {tracking['focus_name']}\n"
+                        f"Intensity: {tracking['intensity_level']}/10\n"
+                        f"Transformation Score: {tracking['transformation_score']}/100\n"
+                        f"Challenges Completed: {tracking['challenges_completed']}\n"
+                        f"Breakthroughs: {tracking['breakthrough_count']}",
+                        reply_markup=reply_markup,
+                        parse_mode="Markdown"
+                    )
+        
+        elif query.data.startswith("dream_action_"):
+            action_idx = int(query.data.replace("dream_action_", ""))
+            
+            # Get current scenario
+            state = self.dreamlife.get_dream_state(str(user_id))
+            if state and state.get("current_scenario"):
+                action = state["current_scenario"]["actions"][action_idx]
+                
+                # Process action
+                await query.message.reply_text("🌟 *Processing your action...*")
+                result = self.dreamlife.process_action(str(user_id), action)
+                
+                if result["success"]:
+                    if result.get("dream_completed"):
+                        keyboard = [
+                            [InlineKeyboardButton("🎉 Start New Dream", callback_data="dreamlife_start")],
+                            [InlineKeyboardButton("🔙 Main Menu", callback_data="back_to_menu")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await query.message.reply_text(
+                            f"🎉 *DREAM ACHIEVED!*\n\n"
+                            f"{result['consequence']}\n\n"
+                            f"You did it! Your dream is now reality!\n"
+                            f"Final Progress: {result['progress']}%",
+                            reply_markup=reply_markup,
+                            parse_mode="Markdown"
+                        )
+                    else:
+                        scenario = result["next_scenario"]
+                        actions_text = "\n".join([f"{i+1}. {action}" for i, action in enumerate(scenario["actions"])])
+                        
+                        milestone_text = ""
+                        if result.get("milestone_completed"):
+                            milestone_text = "\n\n✅ *Milestone Completed!*\n"
+                        
+                        keyboard = [
+                            [InlineKeyboardButton("1️⃣", callback_data="dream_action_0"),
+                             InlineKeyboardButton("2️⃣", callback_data="dream_action_1"),
+                             InlineKeyboardButton("3️⃣", callback_data="dream_action_2")],
+                            [InlineKeyboardButton("📊 Progress", callback_data="mode_status")],
+                            [InlineKeyboardButton("🚪 Exit", callback_data="mode_exit")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await query.message.reply_text(
+                            f"🌟 *Consequence*\n\n"
+                            f"{result['consequence']}"
+                            f"{milestone_text}\n"
+                            f"Progress: {result['progress']}%\n\n"
+                            f"*Next Scenario:*\n{scenario['scenario']}\n\n"
+                            f"*What do you do?*\n{actions_text}",
+                            reply_markup=reply_markup,
+                            parse_mode="Markdown"
+                        )
+                else:
+                    await query.message.reply_text(f"Error: {result.get('error', 'Unknown error')}")
+        
+        elif query.data == "mode_exit":
+            current_mode = self.mode_manager.get_current_mode(str(user_id))
+            if current_mode:
+                self.mode_manager.deactivate_mode(str(user_id))
+                await query.message.reply_text(
+                    f"✅ Exited {current_mode} mode.\n\n"
+                    "Your progress has been saved."
+                )
+            else:
+                await query.message.reply_text("No active mode to exit.")
         
         elif query.data == "gen_image":
             # Check limit
@@ -1091,6 +1452,79 @@ Issues: Contact through website"""
                     "What made them special? How did they make you feel? "
                     "I'm here to listen with all my heart. 💕"
                 )
+            
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "dream_description":
+            # Extract dream and create simulation
+            await update.message.reply_text("🌟 *Analyzing Your Dream...*\n\nGive me a moment...")
+            
+            dream = self.dreamlife.extract_dream(text)
+            result = self.dreamlife.create_simulation(str(user_id), dream)
+            
+            if result["success"]:
+                self.mode_manager.activate_mode(str(user_id), "dreamlife")
+                
+                scenario = result["first_scenario"]
+                actions_text = "\n".join([f"{i+1}. {action}" for i, action in enumerate(scenario["actions"])])
+                
+                keyboard = [
+                    [InlineKeyboardButton("1️⃣", callback_data="dream_action_0"),
+                     InlineKeyboardButton("2️⃣", callback_data="dream_action_1"),
+                     InlineKeyboardButton("3️⃣", callback_data="dream_action_2")],
+                    [InlineKeyboardButton("📊 Progress", callback_data="mode_status")],
+                    [InlineKeyboardButton("🚪 Exit", callback_data="mode_exit")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    f"🌟 *Your Dream Life Begins*\n\n"
+                    f"Dream: {result['dream']}\n"
+                    f"Milestones: {result['milestones_count']}\n\n"
+                    f"*Your First Scenario:*\n{scenario['scenario']}\n\n"
+                    f"*What do you do?*\n{actions_text}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            else:
+                await update.message.reply_text(f"Error: {result.get('error', 'Unknown error')}")
+            
+            context.user_data["waiting_for"] = None
+        
+        elif waiting_for == "luci_response":
+            # Process Luci response
+            await update.message.reply_text("⚡ *Luci is judging...*")
+            
+            result = self.luci.process_response(str(user_id), text)
+            
+            if result["success"]:
+                keyboard = [
+                    [InlineKeyboardButton("💪 Next Challenge", callback_data="luci_respond")],
+                    [InlineKeyboardButton("📊 Status", callback_data="mode_status")],
+                    [InlineKeyboardButton("🚪 Exit", callback_data="mode_exit")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                score_emoji = "📈" if result["score_change"] > 0 else "📉"
+                breakthrough_text = f"\n\n🔥 *BREAKTHROUGH!*\n{result['breakthrough']}" if result.get("breakthrough") else ""
+                
+                await update.message.reply_text(
+                    f"⚡ *Luci's Feedback*\n\n"
+                    f"{result['feedback']}\n\n"
+                    f"{score_emoji} Score Change: {result['score_change']:+d}\n"
+                    f"💯 Transformation Score: {result['transformation_score']}/100\n"
+                    f"🔥 Intensity: {result['intensity']}/10"
+                    f"{breakthrough_text}\n\n"
+                    f"*Next Challenge:*\n{result['next_challenge']['challenge']}",
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
+            elif result.get("cooldown"):
+                await update.message.reply_text(result["error"])
+            elif result.get("daily_limit"):
+                await update.message.reply_text(result["error"])
+            else:
+                await update.message.reply_text(f"Error: {result.get('error', 'Unknown error')}")
             
             context.user_data["waiting_for"] = None
         
