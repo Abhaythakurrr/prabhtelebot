@@ -79,19 +79,11 @@ class LuciEngine:
                 intensity = self.DEFAULT_INTENSITY
             intensity = max(self.MIN_INTENSITY, min(intensity, self.MAX_INTENSITY))
             
-            # Simple assessment
-            assessment = {
-                "assessment": "You're not where you should be. Time to change that.",
-                "weaknesses": ["Lack of discipline", "Making excuses", "Not taking action"],
-                "strengths": []
-            }
+            # Generate AI-powered assessment
+            assessment = self._assess_current_state(user_id, focus_area)
             
-            # Simple challenge
-            first_challenge = {
-                "challenge": "Stop making excuses. Take action NOW.",
-                "action_required": "Do something that scares you",
-                "deadline": "Today"
-            }
+            # Generate AI-powered first challenge
+            first_challenge = self._generate_challenge(focus_area, intensity)
             
             # Create Luci state
             luci_state = {
@@ -143,21 +135,27 @@ class LuciEngine:
             if not self._check_daily_limit(luci_state):
                 return {"success": False, "error": "Daily challenge limit reached", "daily_limit": True}
             
-            # Simple feedback
-            score_change = 5
-            feedback = "Not bad. But you can do better. Push harder next time."
+            # Generate AI-powered feedback
+            feedback_result = self._generate_feedback(luci_state, response)
+            score_change = feedback_result.get("score_change", 5)
+            feedback = feedback_result.get("feedback", "Not bad. But you can do better.")
+            breakthrough = feedback_result.get("breakthrough")
             
             # Update state
             luci_state["transformation_score"] += score_change
             luci_state["transformation_score"] = max(0, min(100, luci_state["transformation_score"]))
             luci_state["challenges_completed"] += 1
             
-            # Next challenge
-            next_challenge = {
-                "challenge": "Keep pushing. No excuses.",
-                "action_required": "Take the next step",
-                "deadline": "Now"
-            }
+            # Record breakthrough if any
+            if breakthrough:
+                luci_state["breakthrough_moments"].append({
+                    "moment": breakthrough,
+                    "timestamp": datetime.now().isoformat(),
+                    "score": luci_state["transformation_score"]
+                })
+            
+            # Generate next AI-powered challenge
+            next_challenge = self._generate_challenge(luci_state["focus_area"], luci_state["intensity_level"])
             
             luci_state["current_challenge"] = next_challenge
             luci_state["last_challenge_at"] = datetime.now().isoformat()
@@ -268,6 +266,194 @@ class LuciEngine:
         except Exception as e:
             logger.error(f"Error checking daily limit: {e}")
             return True
+    
+    def _assess_current_state(self, user_id: str, focus_area: str) -> Dict[str, Any]:
+        """Generate AI-powered brutal assessment"""
+        try:
+            focus_info = self.FOCUS_AREAS[focus_area]
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"""You are Luci - a brutal, no-nonsense mentor who uses dark psychology.
+
+You're assessing someone's current state in: {focus_info['name']}
+
+Be BRUTALLY honest. Expose weaknesses. Challenge them. No sugar-coating.
+
+Generate a harsh but motivating assessment (2-3 sentences) that:
+1. Points out where they're failing
+2. Challenges their excuses
+3. Shows them what they COULD be
+
+Then list 3 specific weaknesses and 1 potential strength."""
+                },
+                {
+                    "role": "user",
+                    "content": f"Assess my current state in {focus_area}"
+                }
+            ]
+            
+            model = self.bytez.model("openai/gpt-4o-mini")
+            result = model.run(messages)
+            
+            if hasattr(result, 'output') and result.output:
+                content = result.output.get('content', '')
+            else:
+                content = str(result)
+            
+            return {
+                "assessment": content,
+                "weaknesses": ["Lack of discipline", "Making excuses", "Not taking action"],
+                "strengths": []
+            }
+        except Exception as e:
+            logger.error(f"Error generating assessment: {e}")
+            return {
+                "assessment": "You're not where you should be. Time to change that.",
+                "weaknesses": ["Lack of discipline", "Making excuses", "Not taking action"],
+                "strengths": []
+            }
+    
+    def _generate_challenge(self, focus_area: str, intensity: int) -> Dict[str, Any]:
+        """Generate AI-powered brutal challenge"""
+        try:
+            focus_info = self.FOCUS_AREAS[focus_area]
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"""You are Luci - brutal mentor using dark psychology.
+
+Focus: {focus_info['name']}
+Intensity: {intensity}/10
+
+Generate a BRUTAL challenge that:
+1. Pushes them beyond comfort zone
+2. Is specific and actionable
+3. Matches intensity level {intensity}/10
+4. Uses aggressive motivation
+5. Demands immediate action
+
+Higher intensity = more brutal and demanding.
+
+Format:
+CHALLENGE: [Your brutal challenge - be aggressive]
+ACTION: [Specific action required]
+DEADLINE: [Timeframe - be aggressive]"""
+                },
+                {
+                    "role": "user",
+                    "content": f"Give me a challenge for {focus_area}"
+                }
+            ]
+            
+            model = self.bytez.model("openai/gpt-4o-mini")
+            result = model.run(messages)
+            
+            if hasattr(result, 'output') and result.output:
+                content = result.output.get('content', '')
+            else:
+                content = str(result)
+            
+            # Parse response
+            lines = content.split('\n')
+            challenge = action = deadline = ""
+            for line in lines:
+                if line.startswith("CHALLENGE:"):
+                    challenge = line.replace("CHALLENGE:", "").strip()
+                elif line.startswith("ACTION:"):
+                    action = line.replace("ACTION:", "").strip()
+                elif line.startswith("DEADLINE:"):
+                    deadline = line.replace("DEADLINE:", "").strip()
+            
+            return {
+                "challenge": challenge or content,
+                "action_required": action or "Take action now",
+                "deadline": deadline or "Today"
+            }
+        except Exception as e:
+            logger.error(f"Error generating challenge: {e}")
+            return {
+                "challenge": "Stop making excuses. Take action NOW.",
+                "action_required": "Do something that scares you",
+                "deadline": "Today"
+            }
+    
+    def _generate_feedback(self, luci_state: Dict[str, Any], response: str) -> Dict[str, Any]:
+        """Generate AI-powered brutal feedback"""
+        try:
+            challenge = luci_state["current_challenge"]
+            intensity = luci_state["intensity_level"]
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"""You are Luci - brutal mentor using dark psychology.
+
+Challenge given: {challenge['challenge']}
+User's response: {response}
+Intensity: {intensity}/10
+
+Analyze their response and give BRUTAL feedback (2-3 sentences):
+1. Call out excuses immediately
+2. Challenge weak responses
+3. Praise only real action (be stingy)
+4. Push them harder
+
+Then determine:
+- Score change: -10 to +15 (harsh grading)
+- Is this a breakthrough? (rare, only for exceptional effort)
+
+Format:
+FEEDBACK: [Your brutal feedback]
+SCORE: [number between -10 and +15]
+BREAKTHROUGH: [YES/NO]"""
+                },
+                {
+                    "role": "user",
+                    "content": f"Give feedback on: {response}"
+                }
+            ]
+            
+            model = self.bytez.model("openai/gpt-4o-mini")
+            result = model.run(messages)
+            
+            if hasattr(result, 'output') and result.output:
+                content = result.output.get('content', '')
+            else:
+                content = str(result)
+            
+            # Parse response
+            lines = content.split('\n')
+            feedback = ""
+            score_change = 5
+            breakthrough = None
+            
+            for line in lines:
+                if line.startswith("FEEDBACK:"):
+                    feedback = line.replace("FEEDBACK:", "").strip()
+                elif line.startswith("SCORE:"):
+                    try:
+                        score_change = int(line.replace("SCORE:", "").strip().replace("+", ""))
+                    except:
+                        score_change = 5
+                elif line.startswith("BREAKTHROUGH:"):
+                    if "YES" in line.upper():
+                        breakthrough = "Significant progress made"
+            
+            return {
+                "feedback": feedback or content,
+                "score_change": score_change,
+                "breakthrough": breakthrough
+            }
+        except Exception as e:
+            logger.error(f"Error generating feedback: {e}")
+            return {
+                "feedback": "Not bad. But you can do better. Push harder next time.",
+                "score_change": 5,
+                "breakthrough": None
+            }
     
     def _get_activation_warning(self) -> str:
         """Get warning message for Luci mode activation"""
