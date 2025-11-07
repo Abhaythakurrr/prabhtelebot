@@ -1959,18 +1959,19 @@ Issues: Contact through website"""
         # Initialize proactive system
         self.proactive_system = get_proactive_system(bot)
         
-        # Start proactive messaging
+        # Start proactive messaging and track tasks
         import asyncio
-        asyncio.create_task(self.proactive_system.start())
-        asyncio.create_task(self.check_reminders_loop())
+        self.proactive_system._task = asyncio.create_task(self.proactive_system.start())
+        self._reminder_task = asyncio.create_task(self.check_reminders_loop())
         logger.info("💕 Proactive messaging system started")
     
     async def check_reminders_loop(self):
         """Check for due reminders every minute"""
         import asyncio
         
-        while True:
-            try:
+        try:
+            while True:
+                try:
                 # Check all users for due reminders
                 for user_id in list(self.cool_features.reminders.keys()):
                     due_reminders = self.cool_features.check_due_reminders(user_id)
@@ -2067,11 +2068,16 @@ Generate a similar caring reminder for: {reminder_text}"""
                         except Exception as e:
                             logger.error(f"Failed to send reminder to {user_id}: {e}")
                 
-                # Check every 30 seconds
-                await asyncio.sleep(30)
-            except Exception as e:
-                logger.error(f"Reminder check error: {e}")
-                await asyncio.sleep(60)
+                    # Check every 30 seconds
+                    await asyncio.sleep(30)
+                except asyncio.CancelledError:
+                    logger.info("Reminder check loop cancelled")
+                    break
+                except Exception as e:
+                    logger.error(f"Reminder check error: {e}")
+                    await asyncio.sleep(60)
+        finally:
+            logger.info("Reminder check loop ended")
     
     def run(self):
         """Run the bot"""
@@ -2085,7 +2091,23 @@ Generate a similar caring reminder for: {reminder_text}"""
             await self.clear_webhook_on_startup(application)
             await self.start_proactive_system()
         
+        # Add graceful shutdown handler
+        async def post_shutdown(application):
+            logger.info("Shutting down background tasks...")
+            # Cancel reminder task
+            if hasattr(self, '_reminder_task') and not self._reminder_task.done():
+                self._reminder_task.cancel()
+                try:
+                    await self._reminder_task
+                except asyncio.CancelledError:
+                    pass
+            # Stop proactive system
+            if hasattr(self, 'proactive_system'):
+                await self.proactive_system.stop()
+            logger.info("Background tasks stopped")
+        
         self.app.post_init = post_init
+        self.app.post_shutdown = post_shutdown
         
         # Railway-specific: Add retry logic for conflicts
         max_retries = 3

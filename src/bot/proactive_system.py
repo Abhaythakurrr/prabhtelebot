@@ -38,6 +38,7 @@ class ProactiveSystem:
         self.config = get_config()
         self.user_manager = get_user_manager()
         self.running = False
+        self._task = None
         
         # Initialize AI
         if hasattr(self.config, 'bytez_key_1') and self.config.bytez_key_1:
@@ -51,18 +52,30 @@ class ProactiveSystem:
         self.running = True
         logger.info("💕 AI-Powered Girlfriend Proactive System Started")
         
-        while self.running:
-            try:
-                await self._check_and_send_messages()
-                # Check every 15 minutes
-                await asyncio.sleep(900)
-            except Exception as e:
-                logger.error(f"Proactive system error: {e}")
-                await asyncio.sleep(300)
+        try:
+            while self.running:
+                try:
+                    await self._check_and_send_messages()
+                    # Check every 15 minutes
+                    await asyncio.sleep(900)
+                except asyncio.CancelledError:
+                    logger.info("Proactive system task cancelled")
+                    break
+                except Exception as e:
+                    logger.error(f"Proactive system error: {e}")
+                    await asyncio.sleep(300)
+        finally:
+            logger.info("Proactive system loop ended")
     
-    def stop(self):
-        """Stop proactive messaging system"""
+    async def stop(self):
+        """Stop proactive messaging system gracefully"""
         self.running = False
+        if self._task and not self._task.done():
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
         logger.info("Proactive messaging system stopped")
     
     def _get_user_time(self, user_id: int) -> datetime:
